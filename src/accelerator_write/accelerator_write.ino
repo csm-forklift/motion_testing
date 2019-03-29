@@ -7,8 +7,15 @@
  * serial node in ROS and receives the "throttle_switch" and 
  * "pedal_fraction" topic messages from the "accelerator_node"
  * node.
+ * 
+ * Pin Layout
+ * Arduino        Pedal
+ * D2->relay in   NO->Switch (green), COM->Switch GND (black)
+ * D3             Signal 1 (blue)
+ * D4             Signal 2 (red)
+ * GND            GND (yellow)
  */
- 
+
 // ROS Includes
 #include <ros.h>
 #include <std_msgs/Bool.h>

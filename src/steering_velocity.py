@@ -62,6 +62,9 @@ class SteeringController():
         self.max_angle = 2*math.pi
         self.min_angle = -2*math.pi
 
+        self.max_accel_scale = 0.01
+        self.max_vel_scale = -0.75 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
+
         #=========================#
         # Create ROS Node Objects
         #=========================#
@@ -128,6 +131,9 @@ class SteeringController():
         # Set control mode (You must either uncomment the line below or do not set the control mode at all and leave let it be the default of 0, or "step" mode. Setting self.ch.setControlMode(ControlMode.CONTROL_MODE_STEP) does not work for some reason)
         if (self.control_mode == 1):
             self.ch.setControlMode(ControlMode.CONTROL_MODE_RUN)
+
+        # Set acceleration (currently set to 75% of max)
+        self.ch.setAcceleration(self.max_accel_scale*self.ch.getMaxAcceleration())
 
         #===============#
         # Run main loop
@@ -212,22 +218,31 @@ class SteeringController():
             # check if the current angle is beyond the bounds
             self.angle = self.ch.getPosition()
             # Read right joystick analog "Left/Right" value
-            self.velocity = self.scale_angle*msg.axes[self.rl_axes]*self.ch.getMaxVelocityLimit()
+            # (only go to 90% ov maximum velocity so it doesn't stall out)
+            self.velocity = self.max_vel_scale*self.scale_angle*msg.axes[self.rl_axes]*self.ch.getMaxVelocityLimit()
 
-            print("Angle: " + str(self.angle))
-            print("Velocity: " + str(self.angle))
-            print("Max: " + str(self.max_angle) + ", Min: " + str(self.min_angle))
+            # Debug Print
+            # print("Angle: " + str(self.angle))
+            # print("Velocity: " + str(self.angle))
+            # print("Max: " + str(self.max_angle) + ", Min: " + str(self.min_angle))
 
-            if not ((self.angle > self.max_angle and self.velocity > 0) or (self.angle < self.min_angle and self.velocity < 0)):
-                try:
-                    self.ch.setVelocityLimit(self.velocity)
-                except PhidgetException as e:
-                    DisplayError(e)
-            else:
-                try:
-                    self.ch.setVelocityLimit(0)
-                except PhidgetException as e:
-                    DisplayError(e)
+            #===== Uses Min/Max =====#
+            # if not ((self.angle > self.max_angle and self.velocity > 0) or (self.angle < self.min_angle and self.velocity < 0)):
+            #     try:
+            #         self.ch.setVelocityLimit(self.velocity)
+            #     except PhidgetException as e:
+            #         DisplayError(e)
+            # else:
+            #     try:
+            #         self.ch.setVelocityLimit(0)
+            #     except PhidgetException as e:
+            #         DisplayError(e)
+
+            #===== No Min/Max considered =====#
+            try:
+                self.ch.setVelocityLimit(self.velocity)
+            except PhidgetException as e:
+                DisplayError(e)
 
 
 def main():
