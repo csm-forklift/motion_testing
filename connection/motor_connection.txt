@@ -1,0 +1,6 @@
+Motor Connection
+Wire         Terminal
+Black --------- A
+Green --------- B
+Red ----------- C
+Blue ---------- D
