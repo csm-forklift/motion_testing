@@ -3,6 +3,11 @@
  * publishes it on the raw data topic.
  * 
  * This code is intended to be used with the steering feedback nodes.
+ * 
+ * Pin Layout
+ * Arduino    Steering Potentiometer
+ * A0   ->    Signal (Black)
+ * GND  ->    GND (yellow)
  */
 
 // ROS Includes
@@ -13,7 +18,7 @@
 const int STEERING_PIN = A0;
 
 //===== Parameters =====//
-const int DELAY_TIME = 32; // msec
+const int DELAY_TIME = 100; // msec
 
 //===== ROS Objects =====//
 ros::NodeHandle nh;

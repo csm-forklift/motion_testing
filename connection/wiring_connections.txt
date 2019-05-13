@@ -4,3 +4,12 @@ Black --------- A
 Green --------- B
 Red ----------- C
 Blue ---------- D
+
+Accelerator Connection
+
+
+Steering Connection
+
+
+IMU Connection
+
