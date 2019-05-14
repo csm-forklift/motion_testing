@@ -18,7 +18,7 @@
 const int STEERING_PIN = A0;
 
 //===== Parameters =====//
-const int DELAY_TIME = 100; // msec
+const int DELAY_TIME = 32; // msec
 
 //===== ROS Objects =====//
 ros::NodeHandle nh;
