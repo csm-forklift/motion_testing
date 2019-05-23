@@ -5,7 +5,7 @@ import traceback
 import time
 import math
 import rospy
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, Bool
 from sensor_msgs.msg import Joy
 from Phidget22.Devices.Stepper import *
 from Phidget22.PhidgetException import *
@@ -62,8 +62,15 @@ class SteeringController():
         self.max_angle = 2*math.pi
         self.min_angle = -2*math.pi
 
-        self.max_accel_scale = 0.01
+        self.max_accel_scale = 0.1
         self.max_vel_scale = -0.75 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
+
+        self.moving = False # indicates whether the motor is currently moving
+        self.repeats = 0 # adds the number of times the motor is seen as not moving
+        self.max_repeats = 5 # the maximum number of times the motor can be seen as not moving before reseting
+        self.ramp_up = False # indicates whether the ramp up procedure should be done (follows a stall event)
+        self.ramp_time = 3 # number of seconds to ramp up to full velocity again
+        self.ramp_start = time.time()
 
         #=========================#
         # Create ROS Node Objects
@@ -73,6 +80,7 @@ class SteeringController():
         self.joy_sub = rospy.Subscriber("/joy", Joy, self.joy_callback, queue_size = 1)
         self.position_pub = rospy.Publisher("~motor_position", Float64, queue_size = 10)
         self.velocity_pub = rospy.Publisher("~motor_velocity", Float64, queue_size = 10)
+        self.moving_sub = rospy.Subscriber("/steering_node/motor/is_moving", Bool, self.moving_callback, queue_size = 3)
 
         # Specify general parameters
         self.rl_axes = 3
@@ -212,6 +220,11 @@ class SteeringController():
         print("Exiting...")
         return 0
 
+    #===================================#
+    # Velocity Set Function
+    # * change this function whenever you use a different source for setting the
+    # * velocity besides the controller.
+    #===================================#
     def joy_callback(self, msg):
         # Check if deadman switch is pressed
         if (msg.buttons[self.deadman_button]):
@@ -221,7 +234,7 @@ class SteeringController():
             # (only go to 90% ov maximum velocity so it doesn't stall out)
             self.velocity = self.max_vel_scale*self.scale_angle*msg.axes[self.rl_axes]*self.ch.getMaxVelocityLimit()
 
-            # Debug Print
+            # DEBUG: Print
             # print("Angle: " + str(self.angle))
             # print("Velocity: " + str(self.angle))
             # print("Max: " + str(self.max_angle) + ", Min: " + str(self.min_angle))
@@ -240,10 +253,33 @@ class SteeringController():
 
             #===== No Min/Max considered =====#
             try:
-                self.ch.setVelocityLimit(self.velocity)
+                # Check if the motor has stopped moving even though it has a velocity command (this means it has stalled and needs to be reset)
+                # self.ch.setVelocityLimit(self.velocity)
+
+                print("Moving: %d" % self.moving)
+
+                if not self.ramp_up:
+                    if (self.ch.getVelocity() != 0 and self.moving == False):
+                        self.repeats += 1
+                        if (self.repeats > self.max_repeats):
+                            self.ramp_up = True
+                            self.ramp_start = time.time()
+                        else:
+                            self.ch.setVelocityLimit(self.velocity)
+                    else:
+                        self.repeats = 0
+                        self.ch.setVelocityLimit(self.velocity)
+                else:
+                    scale = min((time.time() - self.ramp_start)/self.ramp_time, 1)
+                    self.ch.setVelocityLimit(scale*self.velocity)
+                    if (scale >= 1):
+                        self.ramp_up = False
             except PhidgetException as e:
                 DisplayError(e)
 
+    def moving_callback(self, msg):
+        # Update 'moving' to indicate whether the motor is moving or not
+        self.moving = msg.data
 
 def main():
     steering_controller = SteeringController()
