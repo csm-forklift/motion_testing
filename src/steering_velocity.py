@@ -65,12 +65,23 @@ class SteeringController():
         self.max_accel_scale = 0.1
         self.max_vel_scale = -0.75 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
 
+        #===============================================================#
+        # These parameters are used in the stall detection and handling
+        #===============================================================#
+        # Tuning parameters
+        self.max_repeats = 5 # the maximum number of times the motor can be seen as not moving before reseting
+        self.ramp_time_vel = 1 # number of seconds to ramp up to full velocity again
+        self.ramp_time_accel = 1 # number of seconds to ramp up to full acceleration again
+
+        # Operation states
         self.moving = False # indicates whether the motor is currently moving
         self.repeats = 0 # adds the number of times the motor is seen as not moving
-        self.max_repeats = 5 # the maximum number of times the motor can be seen as not moving before reseting
-        self.ramp_up = False # indicates whether the ramp up procedure should be done (follows a stall event)
-        self.ramp_time = 3 # number of seconds to ramp up to full velocity again
-        self.ramp_start = time.time()
+        # indicates whether the velocity command is sent as normal or if the
+        # ramp-up prodecure should be used.
+        # 0 = normal mode
+        # 1 = ramp-up mode
+        self.operation_mode = 0
+        self.ramp_start = time.time() # time when the ramp up procedure began
 
         #=========================#
         # Create ROS Node Objects
@@ -140,8 +151,9 @@ class SteeringController():
         if (self.control_mode == 1):
             self.ch.setControlMode(ControlMode.CONTROL_MODE_RUN)
 
-        # Set acceleration (currently set to 75% of max)
-        self.ch.setAcceleration(self.max_accel_scale*self.ch.getMaxAcceleration())
+        # Set acceleration
+        self.max_acceleration = self.max_accel_scale*self.ch.getMaxAcceleration()
+        self.ch.setAcceleration(self.max_acceleration)
 
         #===============#
         # Run main loop
@@ -253,33 +265,60 @@ class SteeringController():
 
             #===== No Min/Max considered =====#
             try:
-                # Check if the motor has stopped moving even though it has a velocity command (this means it has stalled and needs to be reset)
-                # self.ch.setVelocityLimit(self.velocity)
+                # Check if the system is stalled
+                print("Checking for stall")
+                if (self.check_stall()):
+                    print("Stall detected!")
+                    # Initiate "ramp-up" mode
+                    self.reset_rampup()
 
-                print("Moving: %d" % self.moving)
-
-                if not self.ramp_up:
-                    if (self.ch.getVelocity() != 0 and self.moving == False):
-                        self.repeats += 1
-                        if (self.repeats > self.max_repeats):
-                            self.ramp_up = True
-                            self.ramp_start = time.time()
-                        else:
-                            self.ch.setVelocityLimit(self.velocity)
-                    else:
-                        self.repeats = 0
-                        self.ch.setVelocityLimit(self.velocity)
+                if (self.operation_mode == 0):
+                    print("Normal mode")
+                    # Normal mode
+                    self.ch.setVelocityLimit(self.velocity)
                 else:
-                    scale = min((time.time() - self.ramp_start)/self.ramp_time, 1)
-                    self.ch.setVelocityLimit(scale*self.velocity)
-                    if (scale >= 1):
-                        self.ramp_up = False
+                    print("Ramp mode")
+                    # Ramp-up mode
+                    t_curr = time.time()
+                    scale_vel = min((t_curr - self.ramp_start)/self.ramp_time_vel, 1)**2
+                    scale_accel = min((t_curr - self.ramp_start)/self.ramp_time_accel, 1)
+
+                    print("Max acceleration: %f" % self.max_acceleration)
+                    print("Scale values vel: %f, accel: %f" % (scale_vel, scale_accel))
+
+                    print("Setting acceleration: %f" % (scale_accel*self.max_acceleration))
+                    self.ch.setAcceleration(self.max_acceleration)
+                    print("Setting velocity")
+                    self.ch.setVelocityLimit(scale_vel*self.velocity)
+
+
+
+                    # When ramping has finished resume normal operation
+                    if (scale_vel == 1 and scale_accel == 1):
+                        self.operation_mode = 0
+
             except PhidgetException as e:
                 DisplayError(e)
 
     def moving_callback(self, msg):
         # Update 'moving' to indicate whether the motor is moving or not
         self.moving = msg.data
+
+    def check_stall(self):
+        stalled = False
+        if (self.ch.getVelocity() != 0 and self.moving == False):
+            self.repeats += 1
+            if (self.repeats > self.max_repeats):
+                stalled = True
+        else:
+            self.repeats = 0
+
+        return stalled
+
+    def reset_rampup(self):
+        print("Reseting ramp time")
+        self.ramp_start = time.time()
+        self.operation_mode = 1
 
 def main():
     steering_controller = SteeringController()
