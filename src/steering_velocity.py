@@ -266,32 +266,20 @@ class SteeringController():
             #===== No Min/Max considered =====#
             try:
                 # Check if the system is stalled
-                print("Checking for stall")
                 if (self.check_stall()):
-                    print("Stall detected!")
                     # Initiate "ramp-up" mode
                     self.reset_rampup()
 
                 if (self.operation_mode == 0):
-                    print("Normal mode")
                     # Normal mode
                     self.ch.setVelocityLimit(self.velocity)
                 else:
-                    print("Ramp mode")
                     # Ramp-up mode
                     t_curr = time.time()
                     scale_vel = min((t_curr - self.ramp_start)/self.ramp_time_vel, 1)**2
                     scale_accel = min((t_curr - self.ramp_start)/self.ramp_time_accel, 1)
-
-                    print("Max acceleration: %f" % self.max_acceleration)
-                    print("Scale values vel: %f, accel: %f" % (scale_vel, scale_accel))
-
-                    print("Setting acceleration: %f" % (scale_accel*self.max_acceleration))
                     self.ch.setAcceleration(self.max_acceleration)
-                    print("Setting velocity")
                     self.ch.setVelocityLimit(scale_vel*self.velocity)
-
-
 
                     # When ramping has finished resume normal operation
                     if (scale_vel == 1 and scale_accel == 1):
@@ -316,7 +304,6 @@ class SteeringController():
         return stalled
 
     def reset_rampup(self):
-        print("Reseting ramp time")
         self.ramp_start = time.time()
         self.operation_mode = 1
 
