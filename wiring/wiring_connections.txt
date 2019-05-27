@@ -1,5 +1,5 @@
-Motor Connection
-Wire         Terminal
+Stepper Motor Connection
+Motor Wire     Controller Board Terminal
 Black --------- A
 Green --------- B
 Red ----------- C
