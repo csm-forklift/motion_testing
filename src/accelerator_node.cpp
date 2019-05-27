@@ -8,6 +8,8 @@
  *
  * You should use the "X" mode for the controller as this code will be designed
  * for that button/axes configuration.
+ *
+ * This hsould be used with an Arduino loaded with "accelerator_write.ino"
  */
 
 #include <iostream>

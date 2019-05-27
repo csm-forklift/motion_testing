@@ -58,10 +58,13 @@ class SteeringController():
         self.velocity = 0 # rad/s, starting velocity
         self.angle = 0 # current steering angle
         self.angle_setpoint = 0 # current steering angle setpoint
-        self.angle_tolerance = 0.1 # stops moving the motor when the angle is within +/- the tolerance of the desired setpoint
+        self.angle_tolerance = 0.05 # stops moving the motor when the angle is within +/- the tolerance of the desired setpoint
         # Max and Min angles to turn of the velocity if they are reached
         self.max_angle = 75*(math.pi/180.)
         self.min_angle = -75*(math.pi/180.)
+
+        # DEBUG: print max angle values used
+        print("[steering_feedback] Bounding setpoint angles to, Max: {0:0.3f} ({1:0.3f} deg) Min: {2:0.3f} ({3:0.3f} deg)".format(self.max_angle, self.max_angle*(180/math.pi), self.min_angle, self.min_angle*(180/math.pi)))
 
         self.max_accel_scale = 0.1
         self.max_vel_scale = -0.75 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
@@ -96,6 +99,8 @@ class SteeringController():
         self.velocity_pub = rospy.Publisher("~motor_velocity", Float64, queue_size = 10)
         self.moving_sub = rospy.Subscriber("/steering_node/motor/is_moving", Bool, self.moving_callback, queue_size = 3)
         self.angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float32, self.angle_callback, queue_size = 3)
+        # Run 'spin' loop at 30Hz
+        self.rate = rospy.Rate(30)
 
         # Specify general parameters
         self.rl_axes = 3
@@ -164,7 +169,7 @@ class SteeringController():
         # Run main loop
         #===============#
         # self.mainLoop()
-        rospy.spin()
+        self.spin()
 
     def onAttachHandler(self, channel):
         ph = channel
@@ -236,6 +241,11 @@ class SteeringController():
         self.ch.close()
         print("Exiting...")
         return 0
+
+    def spin(self):
+        while not rospy.is_shutdown():
+            control_loop()
+            self.rate.sleep()
 
     #===================================#
     # Velocity Set Function

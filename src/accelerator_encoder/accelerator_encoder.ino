@@ -4,7 +4,7 @@
  * that mimic the potentiometers to control the forklift speed.
  * 
  * This code is intended to be used as with an Arduino as a 
- * serial node in ROS and receives the "throttle_switch" and 
+ * serial node in ROS and receives the "pedal_switch" and 
  * "pedal_fraction" topic messages from the "accelerator_node"
  * node.
  * 
@@ -13,7 +13,7 @@
  * 
  * Pin Layout
  * Arduino        Pedal
- * D4->relay in   NO->Switch (green), COM->Switch GND (black)
+ * D4->relay in   Relay NO->Switch (green), Relay COM->Switch GND (black)
  * D5             Signal 1 (blue)
  * D6             Signal 2 (red)
  * GND            GND (yellow)
@@ -47,7 +47,7 @@ const int DEBUG_LED = 13;
 // that match the min and max of the signals from the forklift
 const int PWM_MIN = 15;  
 const int PWM_MAX = 200; 
-bool throttle_switch;
+bool pedal_switch;
 int8_t pedal_pwm;
 
 //===== Encoder Variables =====//
@@ -66,13 +66,13 @@ const int NUM_REPEATS = 3;
 ros::NodeHandle nh;
 std_msgs::Bool is_moving;
 ros::Publisher moving_pub("steering_node/motor/is_moving", &is_moving);
-ros::Subscriber<std_msgs::Bool> throttle_switch_sub("accelerator_node/throttle_switch", &switchCallback);
-ros::Subscriber<std_msgs::Int8> pedal_fraction_sub("accelerator_node/pedal_pwm", &pedalCallback);
+ros::Subscriber<std_msgs::Bool> pedal_switch_sub("velocity_node/pedal_switch", &switchCallback);
+ros::Subscriber<std_msgs::Int8> pedal_fraction_sub("velocity_node/pedal_pwm", &pedalCallback);
 
 void setup() {
   //--- Set up ROS
   nh.initNode();
-  nh.subscribe(throttle_switch_sub);
+  nh.subscribe(pedal_switch_sub);
   nh.subscribe(pedal_fraction_sub);
     
   //--- Set up pin modes
@@ -97,7 +97,7 @@ void setup() {
 void loop() {
   //===== Pedal Sequence =====//
   // Update switch relay
-  if (throttle_switch) {
+  if (pedal_switch) {
     digitalWrite(RELAY_PIN, LOW);
   }
   else {
@@ -137,7 +137,7 @@ void loop() {
 
 void switchCallback(const std_msgs::Bool& msg)
 {
-  throttle_switch = msg.data;
+  pedal_switch = msg.data;
 }
 
 void pedalCallback(const std_msgs::Int8& msg)
