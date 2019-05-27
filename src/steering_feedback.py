@@ -58,6 +58,8 @@ class SteeringController():
         self.velocity = 0 # rad/s, starting velocity
         self.angle = 0 # current steering angle
         self.angle_setpoint = 0 # current steering angle setpoint
+
+        # TODO: makes these ROS parameters
         self.angle_tolerance = 0.05 # stops moving the motor when the angle is within +/- the tolerance of the desired setpoint
         # Max and Min angles to turn of the velocity if they are reached
         self.max_angle = 75*(math.pi/180.)
@@ -68,8 +70,6 @@ class SteeringController():
 
         self.max_accel_scale = 0.1
         self.max_vel_scale = -0.75 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
-
-        self.deadman_on = False
 
         #===============================================================#
         # These parameters are used in the stall detection and handling
@@ -94,17 +94,23 @@ class SteeringController():
         #=========================#
         rospy.init_node("steering_controller")
         rospy.on_shutdown(self.close) # shuts down the Phidget properly
-        self.joy_sub = rospy.Subscriber("/steering_node/angle_setpoint", Float64, self.setpoint_callback, queue_size = 1)
+        self.setpoint_sub = rospy.Subscriber("/steering_node/angle_setpoint", Float64, self.setpoint_callback, queue_size = 1)
         self.position_pub = rospy.Publisher("~motor_position", Float64, queue_size = 10)
         self.velocity_pub = rospy.Publisher("~motor_velocity", Float64, queue_size = 10)
         self.moving_sub = rospy.Subscriber("/steering_node/motor/is_moving", Bool, self.moving_callback, queue_size = 3)
         self.angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float32, self.angle_callback, queue_size = 3)
+        self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size = 1)
         # Run 'spin' loop at 30Hz
         self.rate = rospy.Rate(30)
 
         # Specify general parameters
         self.rl_axes = 3
         self.deadman_button = rospy.get_param("~deadman", 4)
+        # Indicates whether the deadman switch has been pressed on the joystick
+        # It must be pressed in order for the system to be able to start running
+        self.deadman_on = False
+        self.timeout = rospy.get_param("~timeout", 1) # number of seconds allowed since the last setpoint message before sending a 0 command
+        self.timeout_start = time.time()
         self.scale_angle = rospy.get_param("~scale_angle", 1)
         self.scale_angle = min(self.scale_angle, 1)
         print("Deadman button: " + str(self.deadman_button))
@@ -254,7 +260,7 @@ class SteeringController():
     #===================================#
     def control_loop(self):
         # Check if deadman switch is pressed
-        if (not self.deadman_on):
+        if (self.deadman_on and (time.time() - self.timeout_start) > self.timeout):
             # Determine direction
             error = self.angle_setpoint - self.angle
             direction = abs(error)/error
@@ -285,14 +291,16 @@ class SteeringController():
                     # When ramping has finished resume normal operation
                     if (scale_vel == 1 and scale_accel == 1):
                         self.operation_mode = 0
-
             except PhidgetException as e:
                 DisplayError(e)
+        else:
+            self.ch.setVelocityLimit(0)
 
     def setpoint_callback(self, msg):
         # Read in new setpoint and saturate against the bounds
         self.angle_setpoint = min(msg.data, self.max_angle)
         self.angle_setpoint = max(self.angle_setpoint, self.min_angle)
+        self.timeout_start = time.time()
 
     def angle_callback(self, msg):
         self.angle = msg.data
@@ -315,6 +323,13 @@ class SteeringController():
     def reset_rampup(self):
         self.ramp_start = time.time()
         self.operation_mode = 1
+
+    def joystick_callback(self, msg):
+        if (msg.buttons[self.deadman_button]):
+            # The system can begin driving
+            self.deadman_on = True
+        else:
+            self.deadman_on = False
 
 def main():
     steering_controller = SteeringController()
