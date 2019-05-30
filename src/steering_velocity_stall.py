@@ -62,7 +62,7 @@ class SteeringController():
         self.max_angle = 2*math.pi
         self.min_angle = -2*math.pi
 
-        self.max_accel_scale = 0.1
+        self.max_accel_scale = 0.01
         self.max_vel_scale = -0.75 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
 
         #===============================================================#
@@ -266,7 +266,25 @@ class SteeringController():
 
             #===== No Min/Max considered =====#
             try:
-                self.ch.setVelocityLimit(self.velocity)
+                # Check if the system is stalled
+                if (self.check_stall()):
+                    # Initiate "ramp-up" mode
+                    self.reset_rampup()
+
+                if (self.operation_mode == 0):
+                    # Normal mode
+                    self.ch.setVelocityLimit(self.velocity)
+                else:
+                    # Ramp-up mode
+                    t_curr = time.time()
+                    scale_vel = min((t_curr - self.ramp_start)/self.ramp_time_vel, 1)**2
+                    scale_accel = min((t_curr - self.ramp_start)/self.ramp_time_accel, 1)
+                    self.ch.setAcceleration(self.max_acceleration)
+                    self.ch.setVelocityLimit(scale_vel*self.velocity)
+
+                    # When ramping has finished resume normal operation
+                    if (scale_vel == 1 and scale_accel == 1):
+                        self.operation_mode = 0
 
             except PhidgetException as e:
                 DisplayError(e)

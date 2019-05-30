@@ -6,6 +6,7 @@ import time
 import math
 import rospy
 from std_msgs.msg import Float64, Float32, Bool
+from sensor_msgs.msg import Joy
 from Phidget22.Devices.Stepper import *
 from Phidget22.PhidgetException import *
 from Phidget22.Phidget import *
@@ -68,7 +69,7 @@ class SteeringController():
         # DEBUG: print max angle values used
         print("[steering_feedback] Bounding setpoint angles to, Max: {0:0.3f} ({1:0.3f} deg) Min: {2:0.3f} ({3:0.3f} deg)".format(self.max_angle, self.max_angle*(180/math.pi), self.min_angle, self.min_angle*(180/math.pi)))
 
-        self.max_accel_scale = 0.1
+        self.max_accel_scale = 0.01
         self.max_vel_scale = -0.75 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
 
         #===============================================================#
@@ -92,11 +93,11 @@ class SteeringController():
         #=========================#
         # Create ROS Node Objects
         #=========================#
-        rospy.init_node("steering_controller")
+        rospy.init_node("steering_feedback")
         rospy.on_shutdown(self.close) # shuts down the Phidget properly
         self.setpoint_sub = rospy.Subscriber("/steering_node/angle_setpoint", Float64, self.setpoint_callback, queue_size = 1)
-        self.position_pub = rospy.Publisher("~motor_position", Float64, queue_size = 10)
-        self.velocity_pub = rospy.Publisher("~motor_velocity", Float64, queue_size = 10)
+        self.position_pub = rospy.Publisher("~motor/position", Float64, queue_size = 10)
+        self.velocity_pub = rospy.Publisher("~motor/velocity", Float64, queue_size = 10)
         self.moving_sub = rospy.Subscriber("/steering_node/motor/is_moving", Bool, self.moving_callback, queue_size = 3)
         self.angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float32, self.angle_callback, queue_size = 3)
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size = 1)
@@ -250,7 +251,7 @@ class SteeringController():
 
     def spin(self):
         while not rospy.is_shutdown():
-            control_loop()
+            self.control_loop()
             self.rate.sleep()
 
     #===================================#
@@ -260,10 +261,14 @@ class SteeringController():
     #===================================#
     def control_loop(self):
         # Check if deadman switch is pressed
-        if (self.deadman_on and (time.time() - self.timeout_start) > self.timeout):
+        if (self.deadman_on and (time.time() - self.timeout_start) < self.timeout):
             # Determine direction
             error = self.angle_setpoint - self.angle
-            direction = abs(error)/error
+
+            if not (error == 0):
+                direction = abs(error)/error
+            else:
+                direction = 1
 
             if (abs(error) > self.angle_tolerance):
                 self.velocity = direction*self.scale_angle*self.max_velocity
@@ -284,7 +289,8 @@ class SteeringController():
                     # Ramp-up mode
                     t_curr = time.time()
                     scale_vel = min((t_curr - self.ramp_start)/self.ramp_time_vel, 1)**2
-                    scale_accel = min((t_curr - self.ramp_start)/self.ramp_time_accel, 1)
+                    scale_accel = min((t_curr - self.ramp_start)/self.ramp_time_accel, 1)**3
+
                     self.ch.setAcceleration(self.max_acceleration)
                     self.ch.setVelocityLimit(scale_vel*self.velocity)
 
