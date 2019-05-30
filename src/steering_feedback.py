@@ -61,16 +61,17 @@ class SteeringController():
         self.angle_setpoint = 0 # current steering angle setpoint
 
         # TODO: makes these ROS parameters
-        self.angle_tolerance = 0.05 # stops moving the motor when the angle is within +/- the tolerance of the desired setpoint
+        self.angle_tolerance = 0.02 # stops moving the motor when the angle is within +/- the tolerance of the desired setpoint
         # Max and Min angles to turn of the velocity if they are reached
         self.max_angle = 75*(math.pi/180.)
         self.min_angle = -75*(math.pi/180.)
+        self.velocity_tolerance = 0.01
 
         # DEBUG: print max angle values used
         print("[steering_feedback] Bounding setpoint angles to, Max: {0:0.3f} ({1:0.3f} deg) Min: {2:0.3f} ({3:0.3f} deg)".format(self.max_angle, self.max_angle*(180/math.pi), self.min_angle, self.min_angle*(180/math.pi)))
 
-        self.max_accel_scale = 0.01
-        self.max_vel_scale = -0.75 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
+        self.max_accel_scale = 0.001
+        self.max_vel_scale = -0.65 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
 
         #===============================================================#
         # These parameters are used in the stall detection and handling
@@ -98,7 +99,7 @@ class SteeringController():
         self.setpoint_sub = rospy.Subscriber("/steering_node/angle_setpoint", Float64, self.setpoint_callback, queue_size = 1)
         self.position_pub = rospy.Publisher("~motor/position", Float64, queue_size = 10)
         self.velocity_pub = rospy.Publisher("~motor/velocity", Float64, queue_size = 10)
-        self.moving_sub = rospy.Subscriber("/steering_node/motor/is_moving", Bool, self.moving_callback, queue_size = 3)
+        self.moving_sub = rospy.Subscriber("/steering_feedback/motor/is_moving", Bool, self.moving_callback, queue_size = 3)
         self.angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float32, self.angle_callback, queue_size = 3)
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size = 1)
         # Run 'spin' loop at 30Hz
@@ -271,7 +272,7 @@ class SteeringController():
                 direction = 1
 
             if (abs(error) > self.angle_tolerance):
-                self.velocity = direction*self.scale_angle*self.max_velocity
+                self.velocity = -direction*self.scale_angle*self.max_velocity
             else:
                 self.velocity = 0
 
@@ -288,10 +289,19 @@ class SteeringController():
                 else:
                     # Ramp-up mode
                     t_curr = time.time()
-                    scale_vel = min((t_curr - self.ramp_start)/self.ramp_time_vel, 1)**2
-                    scale_accel = min((t_curr - self.ramp_start)/self.ramp_time_accel, 1)**3
+                    scale_vel = min((t_curr - self.ramp_start)/self.ramp_time_vel, 1)**3
+                    scale_accel = min((t_curr - self.ramp_start)/self.ramp_time_accel, 1)
+                    scale_accel = max(scale_accel, 0.001)
 
-                    self.ch.setAcceleration(self.max_acceleration)
+                    # DEBUG: print accel scaling
+                    #print("t_curr: %f" % t_curr)
+                    #print("time diff: %f" % (t_curr - self.ramp_start))
+                    # print("accel scale: %f" % scale_accel)
+                    # print("vel scale: %f" % scale_vel)
+                    # print("Accel: %f" % (scale_accel*self.max_acceleration))
+                    # print("Vel: %f" % (scale_vel*self.velocity))
+
+                    self.ch.setAcceleration(scale_accel*self.max_acceleration)
                     self.ch.setVelocityLimit(scale_vel*self.velocity)
 
                     # When ramping has finished resume normal operation
@@ -317,7 +327,7 @@ class SteeringController():
 
     def check_stall(self):
         stalled = False
-        if (self.ch.getVelocity() != 0 and self.moving == False):
+        if (abs(self.ch.getVelocity()) > self.velocity_tolerance and self.moving == False):
             self.repeats += 1
             if (self.repeats > self.max_repeats):
                 stalled = True
@@ -327,6 +337,8 @@ class SteeringController():
         return stalled
 
     def reset_rampup(self):
+        if (self.operation_mode == 0):
+            self.ch.setVelocityLimit(0)
         self.ramp_start = time.time()
         self.operation_mode = 1
 
