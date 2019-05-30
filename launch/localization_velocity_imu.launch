@@ -1,0 +1,32 @@
+<launch>
+
+    <arg name="port_imu" default="/dev/ttyACM0" />
+    <arg name="bus_name" default="slcan0" />
+    
+    <!-- Begin velocity node -->
+    <!-- The arduino running this code can be an UNO or a MEGA and should be running "motion_testing/src/accelerator_read/accelerator_read.ino", see file for wiring -->
+    <!-- <node pkg="rosserial_python" type="serial_node.py" name="accelerator_node_arduino"> -->
+        <!-- <param name="port" value="$(arg port_accelerator)" /> -->
+    <!-- </node> -->
+    <node pkg="sensors" type="velocity_node.py" name="velocity_node" />
+    
+    <!-- Node for velocity conversion to Twist -->
+    <node pkg="sensors" type="velocity_conversion" name="velocity_conversion" />
+
+    <!-- Begin IMU Node -->
+    <!-- The arduino running this code should be an Arduino MEGA and be running "sensors/src/imu_msg_pub/imu_msg_pub.ino", see file for wiring -->
+    <rosparam file="$(find sensors)/config/imu_calibration.yaml" command="load" ns="imu/calibration" />
+    <node pkg="rosserial_python" type="serial_node.py" name="imu_node">
+        <param name="port" value="$(arg port_imu)" />
+    </node>
+    
+    <!-- IMU link transform -->
+    <!-- Distances
+    x: -1.126
+    y: 0
+    z: 1.857 (frame height - (axle diameter / 2))
+    -->
+    <node pkg="tf" type="static_transform_publisher" name="imu_broadcaster" 
+        args="-1.126 0 1.857 0 0 0 1 base_link imu_link 100" />
+        
+</launch>
