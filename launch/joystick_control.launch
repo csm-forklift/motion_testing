@@ -35,6 +35,11 @@
     <node pkg="rosserial_python" type="serial_node.py" name="accelerator_encoder_arduino">
         <param name="port" value="$(arg port_accelerator_encoder)" />
     </node>
-    
+    <node pkg="motion_testing" type="velocity_pid.py" name="velocity_pid">
+        <param name="deadman" value="4"/>
+        <param name="Kp" value="4"/>
+        <param name="Ki" value="75"/>
+        <param name="Kd" value="0"/>
+    </node>
     
 </launch>

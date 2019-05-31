@@ -5,7 +5,7 @@ import traceback
 import time
 import math
 import rospy
-from std_msgs.msg import Float64, Float32, Bool
+from std_msgs.msg import Float64, Bool
 from sensor_msgs.msg import Joy
 from Phidget22.Devices.Stepper import *
 from Phidget22.PhidgetException import *
@@ -100,7 +100,7 @@ class SteeringController():
         self.position_pub = rospy.Publisher("~motor/position", Float64, queue_size = 10)
         self.velocity_pub = rospy.Publisher("~motor/velocity", Float64, queue_size = 10)
         self.moving_sub = rospy.Subscriber("/steering_feedback/motor/is_moving", Bool, self.moving_callback, queue_size = 3)
-        self.angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float32, self.angle_callback, queue_size = 3)
+        self.angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float64, self.angle_callback, queue_size = 3)
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size = 1)
         # Run 'spin' loop at 30Hz
         self.rate = rospy.Rate(30)

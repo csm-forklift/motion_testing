@@ -16,7 +16,7 @@ steering angle will remain constant at is current position.
 '''
 
 import rospy
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, Bool
 from sensor_msgs.msg import Joy
 import math
 import time
@@ -29,6 +29,7 @@ class JoystickController:
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size=1)
         self.vel_setpoint_pub = rospy.Publisher("/velocity_node/velocity_setpoint", Float64, queue_size=1)
         self.angle_setpoint_pub = rospy.Publisher("/steering_node/angle_setpoint", Float64, queue_size=1)
+        self.pedal_switch_pub = rospy.Publisher("/velocity_node/pedal_switch", Bool, queue_size=1)
 
         #===== Set Parameters =====#
         self.angle_max = rospy.get_param("~angle_max", 75*(math.pi/180.))
@@ -101,8 +102,14 @@ class JoystickController:
 
         if (msg.buttons[self.deadman_button]):
             self.deadman_on = True
+            pedal_on = Bool()
+            pedal_on.data = True
+            self.pedal_switch_pub.publish(pedal_on)
         else:
             self.deadman_on = False
+            pedal_on = Bool()
+            pedal_on.data = False
+            self.pedal_switch_pub.publish(pedal_on)
 
 if __name__ == "__main__":
     try:
