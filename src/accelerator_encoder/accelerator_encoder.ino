@@ -28,11 +28,11 @@
 // ROS Includes
 #include <ros.h>
 #include <std_msgs/Bool.h>
-#include <std_msgs/Int8.h>
+#include <std_msgs/UInt8.h>
 
 // Function declarations
 void switchCallback(const std_msgs::Bool&);
-void pedalCallback(const std_msgs::Int8&);
+void pedalCallback(const std_msgs::UInt8&);
 
 //===== Pins =====//
 const int ENCODER_PINA = 2;
@@ -48,7 +48,7 @@ const int DEBUG_LED = 13;
 const int PWM_MIN = 15;  
 const int PWM_MAX = 200; 
 bool pedal_switch;
-int8_t pedal_pwm;
+uint8_t pedal_pwm;
 
 //===== Encoder Variables =====//
 volatile int counter = 0;
@@ -67,7 +67,7 @@ ros::NodeHandle nh;
 std_msgs::Bool is_moving;
 ros::Publisher moving_pub("steering_feedback/motor/is_moving", &is_moving);
 ros::Subscriber<std_msgs::Bool> pedal_switch_sub("velocity_node/pedal_switch", &switchCallback);
-ros::Subscriber<std_msgs::Int8> pedal_fraction_sub("velocity_node/pedal_pwm", &pedalCallback);
+ros::Subscriber<std_msgs::UInt8> pedal_fraction_sub("velocity_node/pedal_pwm", &pedalCallback);
 
 void setup() {
   //--- Set up ROS
@@ -141,7 +141,7 @@ void switchCallback(const std_msgs::Bool& msg)
   pedal_switch = msg.data;
 }
 
-void pedalCallback(const std_msgs::Int8& msg)
+void pedalCallback(const std_msgs::UInt8& msg)
 {
   pedal_pwm = msg.data;
 }

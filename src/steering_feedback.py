@@ -71,7 +71,7 @@ class SteeringController():
         print("[steering_feedback] Bounding setpoint angles to, Max: {0:0.3f} ({1:0.3f} deg) Min: {2:0.3f} ({3:0.3f} deg)".format(self.max_angle, self.max_angle*(180/math.pi), self.min_angle, self.min_angle*(180/math.pi)))
 
         self.max_accel_scale = 0.001
-        self.max_vel_scale = -0.65 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
+        self.max_vel_scale = -0.55 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
 
         #===============================================================#
         # These parameters are used in the stall detection and handling
@@ -154,7 +154,7 @@ class SteeringController():
         # Attach to Phidget
         print("* Opening and Waiting for Attachment...")
         try:
-            self.ch.openWaitForAttachment(5000)
+            self.ch.openWaitForAttachment(3000)
         except PhidgetException as e:
             PrintOpenErrorMessage(e, self.ch)
             raise EndProgramSignal("Program Terminated: Open Failed")

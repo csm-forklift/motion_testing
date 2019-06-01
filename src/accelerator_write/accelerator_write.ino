@@ -26,9 +26,12 @@ void switchCallback(const std_msgs::Bool&);
 void pedalCallback(const std_msgs::Float32&);
 
 //===== Pins =====//
-const int RELAY_PIN = 2;
-const int SIGNAL_PIN_1 = 3;
-const int SIGNAL_PIN_2 = 4;
+//const int RELAY_PIN = 2;
+//const int SIGNAL_PIN_1 = 3;
+//const int SIGNAL_PIN_2 = 4;
+const int RELAY_PIN = 4;
+const int SIGNAL_PIN_1 = 5;
+const int SIGNAL_PIN_2 = 6;
 const int DEBUG_LED = 13;
 
 //===== Data Variables =====//
@@ -87,4 +90,3 @@ void pedalCallback(const std_msgs::Float32& msg)
 {
   g_pedal_fraction = msg.data;
 }
-

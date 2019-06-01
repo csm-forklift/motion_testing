@@ -6,8 +6,9 @@ Implements a simple Discrete-Time PID controller in ROS.
 
 
 import rospy
-from std_msgs.msg import Int8, Float32, Float64
+from std_msgs.msg import UInt8, Float32, Float64
 from sensor_msgs.msg import Joy
+import numpy as np
 import Queue
 import time
 
@@ -18,7 +19,7 @@ class PIDController:
         self.velocity_sub = rospy.Subscriber("velocity_node/velocity", Float64, self.velocity_callback, queue_size=3)
         self.setpoint_sub = rospy.Subscriber("velocity_node/velocity_setpoint", Float64, self.setpoint_callback, queue_size=3)
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback)
-        self.control_pub = rospy.Publisher("velocity_node/pedal_pwm", Int8, queue_size=5)
+        self.control_pub = rospy.Publisher("velocity_node/pedal_pwm", UInt8, queue_size=5)
 
         self.Kp = rospy.get_param("~Kp", 1) # proportional gain
         self.Ki = rospy.get_param("~Ki", 0) # integral gain
@@ -52,7 +53,7 @@ class PIDController:
 
         # Control variable
         self.u = 0
-        self.u_msg = Int8()
+        self.u_msg = UInt8()
 
         # Process outputs
         self.y_setpoint = 0
@@ -68,7 +69,7 @@ class PIDController:
         PID control law and that value is then published.
         '''
         while not rospy.is_shutdown():
-            if (self.deadman_on and (time.time() - self.timeout_start) > self.timeout):
+            if (self.deadman_on and (time.time() - self.timeout_start) < self.timeout):
                 #===== Calculate the control variable using the current process measurement and setpoint =====#
                 # Calculate error
                 self.e_curr = self.y_setpoint - self.y_curr
@@ -97,8 +98,9 @@ class PIDController:
                 #*** Apply constraints to the output here such as u >= 0 or apply a conversion like u = scale_factor * u. ***#
                 self.u = min(self.u, self.output_max)
                 self.u = max(self.u, self.output_min)
+                self.u = np.uint8(self.u)
             else:
-                self.u_msg.data = 0
+                self.u_msg.data = np.uint8(0)
 
             #===== Publish control variable =====#
             self.u_msg.data = self.u
