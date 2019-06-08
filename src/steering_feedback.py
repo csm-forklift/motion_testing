@@ -319,6 +319,7 @@ class SteeringController():
         self.timeout_start = time.time()
 
     def angle_callback(self, msg):
+        # Read the current steering angle
         self.angle = msg.data
 
     def moving_callback(self, msg):
@@ -344,7 +345,7 @@ class SteeringController():
 
     def joystick_callback(self, msg):
         if (msg.buttons[self.deadman_button]):
-            # The system can begin driving
+            # The system can begin driving if deadman is 'on'
             self.deadman_on = True
         else:
             self.deadman_on = False

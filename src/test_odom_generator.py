@@ -19,13 +19,13 @@ class TestOdom:
         self.test_odom.header.frame_id = "odom"
 
         #===== Define Test Odom Pose =====#
-        pose_x = .5
-        pose_y = .1
+        pose_x = 3
+        pose_y = 0
         pose_z = 0
         orient_x = 0
         orient_y = 0
-        orient_z = 0.0436194
-        orient_w = 0.9990482
+        orient_z = 0
+        orient_w = 1
 
         #===== Convert into ROS Path Message =====#
         self.test_odom.pose.pose.position.x = pose_x
