@@ -1,19 +1,27 @@
 <launch>
 
+    <!--=====================================-->
     <!-- Begin Forklift Controls Launch File -->
+    <!--=====================================-->
     <include file="$(find motion_testing)/launch/joystick_control.launch" />
     
+    <!--=======================-->
     <!-- Start Navigation Node -->
+    <!--=======================-->
     <include file="$(find robot_localization)/launch/ukf_forklift.launch" />
     
+    <!--===========================-->
     <!-- Begin Velocity Controller -->
+    <!--===========================-->
     <node pkg="robust_navigation" name="velocity_controller_forward" type="velocity_controller_forward" output="screen">
         <remap from="/controls/velocity_setpoint" to="/velocity_node/velocity_setpoint" />
         <remap from="/controls/angle_setpoint" to="/steering_node/angle_setpoint" />
         <remap from="/bspline_path/path" to="/test_path_generator/test_path" />
     </node>
     
+    <!--================================-->
     <!-- Start generating the test path -->
+    <!--================================-->
     <node pkg="motion_testing" name="test_path_generator" type="test_path_generator.py" output="screen" />
     
 </launch>

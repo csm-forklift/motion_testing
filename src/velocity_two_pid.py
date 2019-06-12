@@ -56,6 +56,7 @@ class PIDController:
 
         # Control variable
         self.u = 0
+        self.u_accel_prev = 0
         self.u_msg = UInt8()
 
         # Process outputs
@@ -101,10 +102,21 @@ class PIDController:
                     # Control Law 1
                     # Error is positive, so forklift needs to accelerate
                     self.u = self.Kp1*self.e_curr + self.Ki1*self.e_sum + self.Kd1*(self.e_curr - self.e_prev)/dt
+
+                    # Update previous acceleration control value
+                    self.u_accel_prev = self.u
+
+                    # DEBUG:
+                    print("Using ACCEL controller")
                 else:
                     # Control Law 2
                     # Error is negative, so forklift needs to brake
-                    self.u = self.Kp2*self.e_curr + self.Ki2*self.e_sum + self.Kd2*(self.e_curr - self.e_prev)/dt
+                    delta_u = self.Kp2*self.e_curr + self.Ki2*self.e_sum + self.Kd2*(self.e_curr - self.e_prev)/dt
+
+                    self.u = self.u_accel_prev + delta_u
+
+                    # DEBUG:
+                    print("Using DECCEL controller")
 
                 # Update error and time terms
                 self.e_prev = self.e_curr
@@ -121,6 +133,7 @@ class PIDController:
             #===== Publish control variable =====#
             self.u_msg.data = self.u
             self.control_pub.publish(self.u_msg)
+
             self.rate.sleep()
 
     def velocity_callback(self, msg):
