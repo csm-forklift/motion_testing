@@ -7,6 +7,7 @@ along with the localization.
 import rospy
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
+import time
 
 
 class TestPath:
@@ -14,15 +15,25 @@ class TestPath:
         #===== Initialize ROS Objects =====#
         rospy.init_node("test_path_generator")
         self.path_pub = rospy.Publisher("~test_path", Path, queue_size=1)
-        self.rate = rospy.Rate(30)
+        self.rate = rospy.Rate(1)
         self.test_path = Path()
         self.test_path.header.frame_id = "odom"
+        self.start_time = time.time()
 
         #===== Define Test Path Points =====#
         # 3m right turn
         points = [[0,0],
                   [3,0],
                   [3,-3]]
+
+        # # Straight line
+        # points = [[0,0],
+        #           [0.5,0],
+        #           [1.0,0],
+        #           [1.5,0],
+        #           [2.0,0],
+        #           [2.5,0],
+        #           [3.0,0]]
 
         #===== Convert into ROS Path Message =====#
         for i in range(len(points)):
@@ -34,9 +45,10 @@ class TestPath:
 
     def spin(self):
         while not rospy.is_shutdown():
-            self.test_path.header.seq += 1
-            self.test_path.header.stamp = rospy.Time.now()
-            self.path_pub.publish(self.test_path)
+            if ((time.time() - self.start_time) < 3.0):
+                self.test_path.header.seq += 1
+                self.test_path.header.stamp = rospy.Time.now()
+                self.path_pub.publish(self.test_path)
             self.rate.sleep()
 
 
