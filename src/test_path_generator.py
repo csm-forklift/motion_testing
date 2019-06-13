@@ -45,7 +45,7 @@ class TestPath:
 
     def spin(self):
         while not rospy.is_shutdown():
-            if ((time.time() - self.start_time) < 3.0):
+            if ((time.time() - self.start_time) < 6.0):
                 self.test_path.header.seq += 1
                 self.test_path.header.stamp = rospy.Time.now()
                 self.path_pub.publish(self.test_path)
