@@ -39,7 +39,7 @@ class PIDController:
         self.output_min = rospy.get_param("~output_min", 0)
         self.delta_max = rospy.get_param("~delta_max", 100)
         self.delta_min = rospy.get_param("~delta_min", -20)
-        self.error_tolerance = rospy.get_param("~error_tolerance", 0.005)
+        self.error_tolerance = rospy.get_param("~error_tolerance", 0.1)
 
         # DEBUG: print out bounding values
         print("[velocity_pid] Bounding control output to, Max: {0:d}, Min: {1:d}".format(self.output_max, self.output_min))

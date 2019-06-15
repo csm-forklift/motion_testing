@@ -1,5 +1,18 @@
 <launch>
     
+    <!-- Notes -->
+    <!-- 
+    Add error band so it tolerates the overshoot better.
+    Use "open-loop" control by predicting what PWM we need for a specific velocity
+    and then adjust that value once every few seconds based on a larger number of 
+    velocity readings.
+    Use predictive method to predict velocity.
+    Use second-order P controller with error.
+    
+    -Hardware fixes
+    
+    -->
+    
     <!--==========================-->
     <!-- Parameters and Arguments -->
     <!--==========================-->
@@ -19,6 +32,7 @@
 
     <node pkg="motion_testing" type="joystick_control.py" name="joystick_control" output="screen">
         <param name="deadman" value="$(arg deadman)"/>
+        <param name="vel_max" value="1.0" />
     </node>
     
     <!--========================-->
@@ -42,11 +56,12 @@
         <param name="Kp1" value="1.0"/>
         <param name="Ki1" value="0"/>
         <param name="Kd1" value="0"/>
-        <param name="Kp2" value="0.9"/>
+        <param name="Kp2" value="0.5"/>
         <param name="Ki2" value="0"/>
         <param name="Kd2" value="0"/>
         <param name="delta_max" value="10" />
         <param name="delta_min" value="-1" />
+        <param name="error_tolerance" value="0.3" />
     </node>
     
 </launch>
