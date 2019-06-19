@@ -25,10 +25,12 @@
     <node pkg="rosserial_python" type="serial_node.py" name="steering_node_arduino">
         <param name="port" value="$(arg port_steering)" />
     </node>
+    <!--
     <node pkg="sensors" type="steering_node" name="steering_node" />
     <node pkg="motion_testing" type="steering_feedback.py" name="steering_feedback" output="screen">
         <param name="deadman" value="$(arg deadman)"/>
     </node>
+    -->
     
     <!-- Velocity Control Nodes -->
     <!-- The arduino running this code should be a MEGA and should be running "motion_testing/src/accelerator_encoder.ino", see file for wiring -->

@@ -29,8 +29,10 @@ class PIDController:
             rospy.loginfo("integral_mode value: '%s', is not a valid option. Must be either 'window' or 'continuous'. Setting to 'window'." % self.integral_mode)
             self.integral_mode = "window"
 
-        self.deadman_button = rospy.get_param("~deadman", 4)
-        self.deadman_on = False # this must be switched to 'True' to publish a non-zero command signal
+        self.manual_deadman_button = rospy.get_param("~manual_deadman", 4)
+        self.manual_deadman_on = False # this must be switched to 'True' to publish a non-zero command signal
+        self.autonomous_deadman_button = rospy.get_param("~autonomous_deadman", 5)
+        self.autonomous_deadman_on = False
         self.timeout = rospy.get_param("~timeout", 1) # number of seconds allowed since the last setpoint message before sending a 0 command
         self.timeout_start = time.time()
         self.window_size = rospy.get_param("~window_size", 30)
@@ -79,7 +81,7 @@ class PIDController:
         PID control law and that value is then published.
         '''
         while not rospy.is_shutdown():
-            if (self.deadman_on and (time.time() - self.timeout_start) < self.timeout):
+            if ((self.manual_deadman_on or self.autonomous_deadman_on) and (time.time() - self.timeout_start) < self.timeout):
                 #===== Calculate the control variable using the current process measurement and setpoint =====#
                 # Calculate error
                 self.e_curr = self.y_setpoint - self.y_curr
@@ -143,14 +145,21 @@ class PIDController:
 
     def setpoint_callback(self, msg):
         self.y_setpoint = msg.data
-        self.timeout_start = time.time()
 
     def joystick_callback(self, msg):
-        if (msg.buttons[self.deadman_button]):
-            # The system can begin driving
-            self.deadman_on = True
+        # Update timeout time
+        self.timeout_start = time.time()
+
+        # One of these buttons must be on for this node to send a driving command
+        if (msg.buttons[self.manual_deadman_button]):
+            self.manual_deadman_on = True
         else:
-            self.deadman_on = False
+            self.manual_deadman_on = False
+
+        if (msg.buttons[self.autonomous_deadman_button]):
+            self.autonomous_deadman_on = True
+        else:
+            self.autonomous_deadman_on = False
 
 
 if __name__ == "__main__":

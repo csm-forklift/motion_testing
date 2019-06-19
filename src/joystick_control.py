@@ -26,17 +26,21 @@ class JoystickController:
     def __init__(self):
         #===== Initialize ROS Objects =====#
         rospy.init_node("joystick_controller")
-        self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size=1)
-        self.vel_setpoint_pub = rospy.Publisher("/velocity_node/velocity_setpoint", Float64, queue_size=1)
-        self.angle_setpoint_pub = rospy.Publisher("/steering_node/angle_setpoint", Float64, queue_size=1)
-        self.pedal_switch_pub = rospy.Publisher("/velocity_node/pedal_switch", Bool, queue_size=1)
 
         #===== Set Parameters =====#
         self.angle_max = rospy.get_param("~angle_max", 75*(math.pi/180.))
         self.vel_max = rospy.get_param("~vel_max", 0.5)
         self.steering_mode = rospy.get_param("~steering_mode", "relative")
-        self.deadman_button = rospy.get_param("~deadman", 4)
-        self.deadman_on = False
+        self.manual_deadman_button = rospy.get_param("~manual_deadman", 4)
+        self.manual_deadman_on = False
+        self.timeout = rospy.get_param("~timeout", 1)
+        self.timeout_start = time.time()
+
+        #===== Publishers and Subscribers =====#
+        self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size=1)
+        self.vel_setpoint_pub = rospy.Publisher("/velocity_node/velocity_setpoint", Float64, queue_size=1)
+        self.angle_setpoint_pub = rospy.Publisher("/steering_node/angle_setpoint", Float64, queue_size=1)
+        self.pedal_switch_pub = rospy.Publisher("/velocity_node/pedal_switch", Bool, queue_size=1)
 
         if self.steering_mode not in ["relative", "absolute"]:
             rospy.loginfo("steering_mode value: '%s', is not a valid option. Must be either 'relative' or 'absolute'. Setting to 'relative'." % self.steering_mode)
@@ -63,7 +67,7 @@ class JoystickController:
 
     def spin(self):
         while not rospy.is_shutdown():
-            if (self.deadman_on):
+            if (self.manual_deadman_on and (time.time() - self.timeout_start) < self.timeout):
                 # Calculate the velocity based on joystick input
                 self.velocity = self.vel_scale*self.vel_max
 
@@ -92,6 +96,9 @@ class JoystickController:
             self.rate.sleep()
 
     def joystick_callback(self, msg):
+        # Update timeout time
+        self.timeout_start = time.time()
+
         # Store the velocity scaling value
         self.vel_scale = msg.axes[self.vel_axes]
         # Bound it to be positive
@@ -100,13 +107,13 @@ class JoystickController:
         # Store the angle scaling value
         self.angle_scale = msg.axes[self.angle_axes]
 
-        if (msg.buttons[self.deadman_button]):
-            self.deadman_on = True
+        if (msg.buttons[self.manual_deadman_button]):
+            self.manual_deadman_on = True
             pedal_on = Bool()
             pedal_on.data = True
             self.pedal_switch_pub.publish(pedal_on)
         else:
-            self.deadman_on = False
+            self.manual_deadman_on = False
             pedal_on = Bool()
             pedal_on.data = False
             self.pedal_switch_pub.publish(pedal_on)

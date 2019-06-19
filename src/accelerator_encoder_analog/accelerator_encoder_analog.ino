@@ -29,6 +29,7 @@
 #include <ros.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/UInt8.h>
+#include <Wire.h>
 
 // Function declarations
 void switchCallback(const std_msgs::Bool&);

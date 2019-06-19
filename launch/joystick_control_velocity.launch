@@ -10,7 +10,8 @@
     Use second-order P controller with error.
     
     -Hardware fixes
-    
+    Add filter to pedal signal
+    Use shielded wiring for the pedal signal
     -->
     
     <!--==========================-->
@@ -32,7 +33,7 @@
 
     <node pkg="motion_testing" type="joystick_control.py" name="joystick_control" output="screen">
         <param name="deadman" value="$(arg deadman)"/>
-        <param name="vel_max" value="1.0" />
+        <param name="vel_max" value="0.5" />
     </node>
     
     <!--========================-->

@@ -95,6 +95,22 @@ class SteeringController():
         # Create ROS Node Objects
         #=========================#
         rospy.init_node("steering_feedback")
+        # Specify general parameters
+        self.rl_axes = 3
+        self.manual_deadman_button = rospy.get_param("~manual_deadman", 4)
+        # Indicates whether the deadman switch has been pressed on the joystick
+        # It must be pressed in order for the system to be able to start running
+        self.manual_deadman_on = False
+        self.autonomous_deadman_button = rospy.get_param("~autonomous_deadman", 5)
+        self.autonomous_deadman_on = False
+        self.timeout = rospy.get_param("~timeout", 1) # number of seconds allowed since the last setpoint message before sending a 0 command
+        self.timeout_start = time.time()
+        self.scale_angle = rospy.get_param("~scale_angle", 1)
+        self.scale_angle = min(self.scale_angle, 1)
+        print("Deadman button: " + str(self.deadman_button))
+        print("Scale angle: " + str(self.scale_angle))
+
+        # Publishers and Subscribers
         rospy.on_shutdown(self.close) # shuts down the Phidget properly
         self.setpoint_sub = rospy.Subscriber("/steering_node/angle_setpoint", Float64, self.setpoint_callback, queue_size = 1)
         self.position_pub = rospy.Publisher("~motor/position", Float64, queue_size = 10)
@@ -104,19 +120,6 @@ class SteeringController():
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size = 1)
         # Run 'spin' loop at 30Hz
         self.rate = rospy.Rate(30)
-
-        # Specify general parameters
-        self.rl_axes = 3
-        self.deadman_button = rospy.get_param("~deadman", 4)
-        # Indicates whether the deadman switch has been pressed on the joystick
-        # It must be pressed in order for the system to be able to start running
-        self.deadman_on = False
-        self.timeout = rospy.get_param("~timeout", 1) # number of seconds allowed since the last setpoint message before sending a 0 command
-        self.timeout_start = time.time()
-        self.scale_angle = rospy.get_param("~scale_angle", 1)
-        self.scale_angle = min(self.scale_angle, 1)
-        print("Deadman button: " + str(self.deadman_button))
-        print("Scale angle: " + str(self.scale_angle))
 
         #================================#
         # Create phidget stepper channel
@@ -262,7 +265,7 @@ class SteeringController():
     #===================================#
     def control_loop(self):
         # Check if deadman switch is pressed
-        if (self.deadman_on and (time.time() - self.timeout_start) < self.timeout):
+        if ((self.manual_deadman_on or self.autonomous_deadman_on) and (time.time() - self.timeout_start) < self.timeout):
             # Determine direction
             error = self.angle_setpoint - self.angle
 
@@ -316,7 +319,6 @@ class SteeringController():
         # Read in new setpoint and saturate against the bounds
         self.angle_setpoint = min(msg.data, self.max_angle)
         self.angle_setpoint = max(self.angle_setpoint, self.min_angle)
-        self.timeout_start = time.time()
 
     def angle_callback(self, msg):
         # Read the current steering angle
@@ -344,11 +346,19 @@ class SteeringController():
         self.operation_mode = 1
 
     def joystick_callback(self, msg):
-        if (msg.buttons[self.deadman_button]):
-            # The system can begin driving if deadman is 'on'
-            self.deadman_on = True
+        # Update timeout time
+        self.timeout_start = time.time()
+
+        # One of these buttons must be on for this node to send a steering command
+        if (msg.buttons[self.manual_deadman_button]):
+            self.manual_deadman_on = True
         else:
-            self.deadman_on = False
+            self.manual_deadman_on = False
+
+        if (msg.buttons[self.autonomous_deadman_button]):
+            self.autonomous_deadman_on = True
+        else:
+            self.autonomous_deadman_on = False
 
 def main():
     steering_controller = SteeringController()
