@@ -1,7 +1,9 @@
 <launch>
     
     <!-- Parameters -->
-    <arg name="deadman" default="4" />
+    <arg name="manual_deadman" default="4" />
+    <arg name="autonomous_deadman" default="5" />
+    <arg name="timeout" default="1.0" />
     <arg name="port_steering" default="/dev/ttyACM0" />
     <arg name="port_accelerator_encoder" default="/dev/ttyACM1" />
 
@@ -17,7 +19,8 @@
     </node>
 
     <node pkg="motion_testing" type="joystick_control_pwm.py" name="joystick_control_pwm" output="screen">
-        <param name="deadman" value="$(arg deadman)"/>
+        <param name="manual_deadman" value="$(arg manual_deadman)"/>
+        <param name="timeout" value="$(timeout)" />
     </node>
     
     <!-- Steering Control Nodes -->
@@ -28,7 +31,9 @@
     <!--
     <node pkg="sensors" type="steering_node" name="steering_node" />
     <node pkg="motion_testing" type="steering_feedback.py" name="steering_feedback" output="screen">
-        <param name="deadman" value="$(arg deadman)"/>
+        <param name="manual_deadman" value="$(arg manual_deadman)" />
+        <param name="autonomous_deadman" value="$(arg autonomous_deadman)" />
+        <param name="timeout" value="$(arg timeout)" />
     </node>
     -->
     
