@@ -19,10 +19,10 @@
  * GND            GND (yellow)
  * 
  *                Encoder
- * D2 (interrupt) Pin A (white)
- * D3             Pin B (Brown)
- * 5V             5V (Orange)
- * GND            GND (Black)
+ * D2 (interrupt) Pin A (white) (white on extension)
+ * D3             Pin B (Brown) (yellow on extension)
+ * 5V             5V (Orange) (red on extension)
+ * GND            GND (Black) (black on extension)
  */
 
 // ROS Includes

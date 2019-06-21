@@ -18,6 +18,10 @@
  * D6             Signal 2 (red)
  * GND            GND (yellow)
  * 
+ *                DAC
+ * A4             SDA
+ * A5             SCL
+ * 
  *                Encoder
  * D2 (interrupt) Pin A (white)
  * D3             Pin B (Brown)
@@ -25,28 +29,33 @@
  * GND            GND (Black)
  */
 
-// ROS Includes
+//===== ROS Includes =====//
 #include <ros.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/UInt8.h>
 #include <Wire.h>
 
-// Function declarations
+//===== Function declarations =====//
 void switchCallback(const std_msgs::Bool&);
 void pedalCallback(const std_msgs::UInt8&);
+void writeToAnalog(const int analog);
+
+//===== I2C Connection =====//
+const int MCP4725_ADDR = 0x60;
+// The DAC is 12 bit
+const int ANALOG_MAX = 4095;
+const int ANALOG_MIN = 0;
 
 //===== Pins =====//
 const int ENCODER_PINA = 2;
 const int ENCODER_PINB = 3;
 const int RELAY_PIN = 4;
-const int SIGNAL_PIN_1 = 5;
-const int SIGNAL_PIN_2 = 6;
 const int DEBUG_LED = 13;
 
 //===== Pedal Variables =====//
 // You want to "MIN" and "MAX" pwm values to produce voltages 
 // that match the min and max of the signals from the forklift
-const int PWM_MIN = 50;
+const int PWM_MIN = 15;
 const int PWM_MAX = 200;
 bool pedal_switch;
 uint8_t pedal_pwm;
@@ -80,17 +89,16 @@ void setup() {
   //--- Set up pin modes
   // Pedal
   pinMode(RELAY_PIN, OUTPUT);
-  pinMode(SIGNAL_PIN_1, OUTPUT);
-  pinMode(SIGNAL_PIN_2, OUTPUT);
   pinMode(DEBUG_LED, OUTPUT);
   digitalWrite(RELAY_PIN, HIGH);
-  analogWrite(SIGNAL_PIN_1, PWM_MIN);
-  analogWrite(SIGNAL_PIN_2, PWM_MIN);
   // Encoder
   pinMode(ENCODER_PINA, INPUT);
   pinMode(ENCODER_PINB, INPUT);
   // Attach interrupt for encoder
   attachInterrupt(digitalPinToInterrupt(ENCODER_PINA), isr, RISING); // ISR = Interrupt Service Routine
+
+  // Begin I2C connection
+  Wire.begin();
 
   // Begin serial connection
   Serial.begin(57600);
@@ -109,8 +117,8 @@ void loop() {
   // Update pedal signals
   int pwm_signal = min(pedal_pwm, PWM_MAX);
   pwm_signal = max(pwm_signal, PWM_MIN);
-  analogWrite(SIGNAL_PIN_1, pwm_signal);
-  analogWrite(SIGNAL_PIN_2, pwm_signal);
+  int analog_signal = map(pwm_signal, 0, 255, 0, 4095);
+  writeToAnalog(analog_signal);
 
   //===== Encoder Sequence =====//
   // Check if counter is the same as the previous value
@@ -145,6 +153,25 @@ void switchCallback(const std_msgs::Bool& msg)
 void pedalCallback(const std_msgs::UInt8& msg)
 {
   pedal_pwm = msg.data;
+}
+
+void writeToAnalog(const int analog)
+{
+  // Bound the input to the DAC
+  int input;
+  input = max(analog, ANALOG_MIN);
+  input = min(input, ANALOG_MAX);
+
+  // Send "write" signal to device
+  Wire.beginTransmission(MCP4725_ADDR);
+  Wire.write(64); // "write" command for DAC input register
+
+  // Send data, most significant byte first
+  byte MSB = (input >> 4);
+  byte LSB = ((input & 15) << 4); // expects the last four bits in the msb position
+  Wire.write(MSB);
+  Wire.write(LSB);
+  Wire.endTransmission();
 }
 
 void isr() {
