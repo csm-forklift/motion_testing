@@ -107,7 +107,8 @@ class SteeringController():
         self.timeout_start = time.time()
         self.scale_angle = rospy.get_param("~scale_angle", 1)
         self.scale_angle = min(self.scale_angle, 1)
-        print("Deadman button: " + str(self.deadman_button))
+        print("Manual deadman button: " + str(self.manual_deadman_button))
+        print("Autonomous deadman button: " + str(self.autonomous_deadman_button))
         print("Scale angle: " + str(self.scale_angle))
 
         # Publishers and Subscribers

@@ -33,6 +33,8 @@ class JoystickController:
         self.steering_mode = rospy.get_param("~steering_mode", "relative")
         self.manual_deadman_button = rospy.get_param("~manual_deadman", 4)
         self.manual_deadman_on = False
+        self.autonomous_deadman_button = rospy.get_param("~autonomous_deadman_button", 5)
+        self.autonomous_deadman_on = False
         self.timeout = rospy.get_param("~timeout", 1)
         self.timeout_start = time.time()
 
@@ -83,15 +85,24 @@ class JoystickController:
                     # but the steering angle as determined by the "backwards" driving
                     # convention used in our system makes left as negative
                     self.angle = -self.angle_scale*self.angle_max
+
+                # Publish the messages
+                self.velocity_msg.data = self.velocity
+                self.angle_msg.data = self.angle
+                self.vel_setpoint_pub.publish(self.velocity_msg)
+                self.angle_setpoint_pub.publish(self.angle_msg)
+            elif (self.autonomous_deadman_on and (time.time() - self.timeout_start) < self.timeout):
+                # Send no command
+                pass
             else:
                 # Only set the velocity to 0, leave the angle where it is already at
                 self.velocity = 0
 
-            # Publish the messages
-            self.velocity_msg.data = self.velocity
-            self.angle_msg.data = self.angle
-            self.vel_setpoint_pub.publish(self.velocity_msg)
-            self.angle_setpoint_pub.publish(self.angle_msg)
+                # Publish the messages
+                self.velocity_msg.data = self.velocity
+                self.angle_msg.data = self.angle
+                self.vel_setpoint_pub.publish(self.velocity_msg)
+                self.angle_setpoint_pub.publish(self.angle_msg)
 
             self.rate.sleep()
 
@@ -117,6 +128,11 @@ class JoystickController:
             pedal_on = Bool()
             pedal_on.data = False
             self.pedal_switch_pub.publish(pedal_on)
+
+        if (msg.buttons[self.autonomous_deadman_button]):
+            self.autonomous_deadman_on = True
+        else:
+            self.autonomous_deadman_on = False
 
 if __name__ == "__main__":
     try:

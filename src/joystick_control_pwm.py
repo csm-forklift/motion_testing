@@ -35,8 +35,10 @@ class JoystickController:
         self.angle_max = rospy.get_param("~angle_max", 75*(math.pi/180.))
         self.vel_max = rospy.get_param("~vel_max", 255)
         self.steering_mode = rospy.get_param("~steering_mode", "relative")
-        self.deadman_button = rospy.get_param("~deadman", 4)
-        self.deadman_on = False
+        self.manual_deadman_button = rospy.get_param("~manual_deadman", 4)
+        self.manual_deadman_on = False
+        self.timeout = rospy.get_param("~timeout", 1) # number of seconds allowed since the last setpoint message before sending a 0 command
+        self.timeout_start = time.time()
 
         if self.steering_mode not in ["relative", "absolute"]:
             rospy.loginfo("steering_mode value: '%s', is not a valid option. Must be either 'relative' or 'absolute'. Setting to 'relative'." % self.steering_mode)
@@ -63,7 +65,7 @@ class JoystickController:
 
     def spin(self):
         while not rospy.is_shutdown():
-            if (self.deadman_on):
+            if (self.manual_deadman_on and (time.time() - self.timeout_start) < self.timeout):
                 # Calculate the velocity based on joystick input
                 self.velocity = self.vel_scale*self.vel_max
 
