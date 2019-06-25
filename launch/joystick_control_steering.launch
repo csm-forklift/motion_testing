@@ -1,0 +1,53 @@
+<launch>
+    
+    <!--==========================-->
+    <!-- Parameters and Arguments -->
+    <!--==========================-->
+    <arg name="manual_deadman" default="4" />
+    <arg name="autonomous_deadman" default="5" />
+    <arg name="timeout" default="1.0" />
+    <arg name="port_steering" default="/dev/ttyACM0" />
+    <arg name="port_accelerator_encoder" default="/dev/ttyACM1" />
+    <arg name="joy_dev" default="/dev/input/js0" />
+
+    <!--========================-->
+    <!-- Joystick Control Nodes -->
+    <!--========================--> 
+    <!--
+    <node pkg="joy" type="joy_node" name="joy_node">
+        <param name="dev" value="$(arg joy_dev)" />
+        <param name="deadzone" value="0.3" />
+        <param name="autorepeat_rate" value="20" />
+    </node>
+
+    <node pkg="motion_testing" type="joystick_control.py" name="joystick_control" output="screen">
+        <param name="manual_deadman" value="$(arg manual_deadman)" />
+        <param name="timeout" value="$(arg timeout)" />
+        <param name="vel_max" value="0.5" />
+    </node>
+    -->
+    
+    <!-- Simulated Joystick -->
+    <node pkg="motion_testing" type="joystick_simulation.py" name="joystick_simulation" />
+    
+    <!--========================-->
+    <!-- Steering Control Nodes -->
+    <!--========================-->
+    <!-- For steering encoder -->
+    <!-- The arduino running this code should be a MEGA and should be running "motion_testing/src/accelerator_encoder.ino", see file for wiring -->
+    <node pkg="rosserial_python" type="serial_node.py" name="accelerator_encoder_arduino">
+        <param name="port" value="$(arg port_accelerator_encoder)" />
+    </node>
+    
+    <!-- The arduino running this code can be an UNO or a MEGA and should be running "motion_testing/src/steering_publish/steering_publish.ino", see file for wiring -->
+    <node pkg="rosserial_python" type="serial_node.py" name="steering_node_arduino">
+        <param name="port" value="$(arg port_steering)" />
+    </node>
+    <node pkg="sensors" type="steering_node" name="steering_node" />
+    <node pkg="motion_testing" type="steering_feedback.py" name="steering_feedback" output="screen">
+        <param name="manual_deadman" value="$(arg manual_deadman)" />
+        <param name="autonomous_deadman" value="$(arg autonomous_deadman)" />
+        <param name="timeout" value="$(arg timeout)" />
+    </node>
+    
+</launch>
