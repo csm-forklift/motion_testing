@@ -70,16 +70,18 @@ class SteeringController():
         # DEBUG: print max angle values used
         print("[steering_feedback] Bounding setpoint angles to, Max: {0:0.3f} ({1:0.3f} deg) Min: {2:0.3f} ({3:0.3f} deg)".format(self.max_angle, self.max_angle*(180/math.pi), self.min_angle, self.min_angle*(180/math.pi)))
 
-        self.max_accel_scale = 0.001
-        self.max_vel_scale = -0.55 # negative value is used to reverse the steering direction, makes right direction on analog stick equal right turn going forward
+        self.max_accel_scale = 0.003
+        self.max_vel_scale = 0.17
+
+        self.velocity_current = 0 # current velocity from the motor controller
 
         #===============================================================#
         # These parameters are used in the stall detection and handling
         #===============================================================#
         # Tuning parameters
         self.max_repeats = 5 # the maximum number of times the motor can be seen as not moving before reseting
-        self.ramp_time_vel = 1 # number of seconds to ramp up to full velocity again
-        self.ramp_time_accel = 1 # number of seconds to ramp up to full acceleration again
+        self.ramp_time_vel = 1.5 # number of seconds to ramp up to full velocity again
+        self.ramp_time_accel = 1.5 # number of seconds to ramp up to full acceleration again
 
         # Operation states
         self.moving = False # indicates whether the motor is currently moving
@@ -243,6 +245,7 @@ class SteeringController():
         self.position_pub.publish(Float64(position))
 
     def onVelocityChangeHandler(self, channel, velocity):
+        self.velocity_current = velocity
         self.velocity_pub.publish(Float64(velocity))
 
     def close(self):
@@ -276,7 +279,7 @@ class SteeringController():
                 direction = 1
 
             if (abs(error) > self.angle_tolerance):
-                self.velocity = -direction*self.scale_angle*self.max_velocity
+                self.velocity = direction*self.scale_angle*self.max_velocity
             else:
                 self.velocity = 0
 
@@ -290,6 +293,29 @@ class SteeringController():
                 if (self.operation_mode == 0):
                     # Normal mode
                     self.ch.setVelocityLimit(self.velocity)
+
+                    # Scale down the acceleration as the velocity increases
+                    # # (Linear)
+                    # accel_vel_scale = (self.max_velocity - abs(self.velocity_current))/(self.max_velocity)
+                    # accel_vel_scale = min(accel_vel_scale, 1)
+                    # accel_vel_scale = max(accel_vel_scale, 0)
+
+                    # (Inverse)
+                    # parameters
+                    unchanged_length = 0.75 # increase this value to increase the range where the accelerations remains unreduced
+                    final_scale = 10 # increase this value to decrease the final scale value at max velocity
+                    try:
+                        accel_vel_scale = 1/(final_scale*(abs(self.velocity_current)/self.max_velocity)**unchanged_length)
+                    except ZeroDivisionError:
+                        accel_vel_scale = 1
+                    accel_vel_scale = min(accel_vel_scale, 1)
+                    accel_vel_scale = max(accel_vel_scale, 0)
+
+                    # Set acceleration
+                    print("Current velocity: %f, max: %f" % (self.velocity_current, self.max_velocity))
+                    print("Accel scale: %f" % accel_vel_scale)
+                    self.ch.setAcceleration(accel_vel_scale*self.max_acceleration)
+
                 else:
                     # Ramp-up mode
                     t_curr = time.time()
@@ -298,12 +324,12 @@ class SteeringController():
                     scale_accel = max(scale_accel, 0.001)
 
                     # DEBUG: print accel scaling
-                    #print("t_curr: %f" % t_curr)
-                    #print("time diff: %f" % (t_curr - self.ramp_start))
-                    # print("accel scale: %f" % scale_accel)
-                    # print("vel scale: %f" % scale_vel)
-                    # print("Accel: %f" % (scale_accel*self.max_acceleration))
-                    # print("Vel: %f" % (scale_vel*self.velocity))
+                    print("t_curr: %f" % t_curr)
+                    print("time diff: %f" % (t_curr - self.ramp_start))
+                    print("accel scale: %f" % scale_accel)
+                    print("vel scale: %f" % scale_vel)
+                    print("Accel: %f" % (scale_accel*self.max_acceleration))
+                    print("Vel: %f" % (scale_vel*self.velocity))
 
                     self.ch.setAcceleration(scale_accel*self.max_acceleration)
                     self.ch.setVelocityLimit(scale_vel*self.velocity)
@@ -345,6 +371,7 @@ class SteeringController():
             self.ch.setVelocityLimit(0)
         self.ramp_start = time.time()
         self.operation_mode = 1
+        self.ch.setAcceleration(self.max_acceleration)
 
     def joystick_callback(self, msg):
         # Update timeout time
