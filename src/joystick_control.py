@@ -134,6 +134,14 @@ class JoystickController:
         else:
             self.autonomous_deadman_on = False
 
+        # Turn the accelerator relay ON if either of the deadman switches are pressed.
+        pedal_on = Bool()
+        if (self.manual_deadman_on or self.autonomous_deadman_on):
+            pedal_on.data = True
+        else:
+            pedal_on.data = False
+        self.pedal_switch_pub.publish(pedal_on)
+
 if __name__ == "__main__":
     try:
         joystick_controller = JoystickController()

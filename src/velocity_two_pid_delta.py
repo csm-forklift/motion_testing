@@ -42,9 +42,10 @@ class PIDController:
         self.delta_max = rospy.get_param("~delta_max", 100)
         self.delta_min = rospy.get_param("~delta_min", -20)
         self.error_tolerance = rospy.get_param("~error_tolerance", 0.1)
+        self.error_exponent = rospy.get_param("~error_exponent", 1.0) # exponent applied to only the error for the proportional term in the PID controller
 
         # DEBUG: print out bounding values
-        print("[velocity_pid] Bounding control output to, Max: {0:d}, Min: {1:d}".format(self.output_max, self.output_min))
+        print("[velocity_two_pid_delta] Bounding control output to, Max: {0:d}, Min: {1:d}".format(self.output_max, self.output_min))
 
         # Set publishers and subscribers
         self.velocity_sub = rospy.Subscriber("velocity_node/velocity", Float64, self.velocity_callback, queue_size=3)
@@ -110,11 +111,11 @@ class PIDController:
                     if (self.e_curr >= 0):
                         # Control Law 1
                         # Error is positive, so forklift needs to accelerate
-                        self.u_delta = self.Kp1*self.e_curr + self.Ki1*self.e_sum + self.Kd1*(self.e_curr - self.e_prev)/dt
+                        self.u_delta = self.Kp1*(self.e_curr**self.error_exponent) + self.Ki1*self.e_sum + self.Kd1*(self.e_curr - self.e_prev)/dt
                     else:
                         # Control Law 2
                         # Error is negative, so forklift needs to brake
-                        self.u_delta = self.Kp2*self.e_curr + self.Ki2*self.e_sum + self.Kd2*(self.e_curr - self.e_prev)/dt
+                        self.u_delta = self.Kp2*(self.e_curr**self.error_exponent) + self.Ki2*self.e_sum + self.Kd2*(self.e_curr - self.e_prev)/dt
                 else:
                     self.u_delta = 0
 

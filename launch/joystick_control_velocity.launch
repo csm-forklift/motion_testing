@@ -51,7 +51,7 @@
     <!--========================-->
     <!-- Velocity Control Nodes -->
     <!--========================-->
-    <!-- The arduino running this code should be a MEGA and should be running "motion_testing/src/accelerator_encoder.ino", see file for wiring -->
+    <!-- The arduino running this code can be an UNO or a MEGA and should be running "motion_testing/src/accelerator_encoder.ino", see file for wiring -->
     <node pkg="rosserial_python" type="serial_node.py" name="accelerator_encoder_arduino">
         <param name="port" value="$(arg port_accelerator_encoder)" />
     </node>
@@ -68,6 +68,7 @@
         <param name="delta_max" value="10" />
         <param name="delta_min" value="-1" />
         <param name="error_tolerance" value="0.3" />
+        <param name="error_exponent" value="1.0" />
     </node>
     
 </launch>
