@@ -42,7 +42,8 @@ class PIDController:
         self.delta_max = rospy.get_param("~delta_max", 100)
         self.delta_min = rospy.get_param("~delta_min", -20)
         self.error_tolerance = rospy.get_param("~error_tolerance", 0.1)
-        self.error_exponent = rospy.get_param("~error_exponent", 1.0) # exponent applied to only the error for the proportional term in the PID controller
+        self.error_exponent1 = rospy.get_param("~error_exponent1", 1.0) # exponent applied to only the error for the proportional term in the PID controller
+        self.error_exponent2 = rospy.get_param("~error_exponent2", 1.0)
 
         # DEBUG: print out bounding values
         print("[velocity_two_pid_delta] Bounding control output to, Max: {0:d}, Min: {1:d}".format(self.output_max, self.output_min))
@@ -107,15 +108,19 @@ class PIDController:
                 # the forklift has different dynamics in each case, a different
                 # controller is needed in each scenario.
                 #==============================================================#
-                if (abs(self.e_curr) > self.error_tolerance):
+                if (self.y_setpoint == 0):
+                    self.u_delta = self.delta_min
+                elif (abs(self.e_curr) > self.error_tolerance):
                     if (self.e_curr >= 0):
                         # Control Law 1
                         # Error is positive, so forklift needs to accelerate
-                        self.u_delta = self.Kp1*(self.e_curr**self.error_exponent) + self.Ki1*self.e_sum + self.Kd1*(self.e_curr - self.e_prev)/dt
+                        self.u_delta = self.Kp1*(self.e_curr**self.error_exponent1) + self.Ki1*self.e_sum + self.Kd1*(self.e_curr - self.e_prev)/dt
                     else:
                         # Control Law 2
                         # Error is negative, so forklift needs to brake
-                        self.u_delta = self.Kp2*(self.e_curr**self.error_exponent) + self.Ki2*self.e_sum + self.Kd2*(self.e_curr - self.e_prev)/dt
+                        e_curr_pos = abs(self.e_curr)
+                        e_exponent = -(e_curr_pos**self.error_exponent2)
+                        self.u_delta = self.Kp2*(e_exponent) + self.Ki2*self.e_sum + self.Kd2*(self.e_curr - self.e_prev)/dt
                 else:
                     self.u_delta = 0
 

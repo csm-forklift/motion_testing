@@ -97,7 +97,7 @@ void setup() {
   // Attach interrupt for encoder
   attachInterrupt(digitalPinToInterrupt(ENCODER_PINA), isr, RISING); // ISR = Interrupt Service Routine
 
-  // Begin I2C connection
+  // Begin I2C connection to DAC
   Wire.begin();
 
   // Begin serial connection
@@ -117,6 +117,16 @@ void loop() {
   // Update pedal signals
   int pwm_signal = min(pedal_pwm, PWM_MAX);
   pwm_signal = max(pwm_signal, PWM_MIN);
+  // Convert to DAC board resolution
+  /* NOTE: the current controls have been tuned to work with a PWM range of 0-255.
+   * The Digital to Analog converted board has a resolution of 12 bits so it has a 
+   * range of 0 to 4095. We are currently using the tuned controller for 0-255 
+   * since the change between steps is larger and changing the range would then
+   * necessitate retuning all of the control parameters. The forklift speed 
+   * resolution is not high enough to make the change necessary, so we are leaving
+   * the current tuned parameters as-is and are converting the 0-255 signal value
+   * into the appropriate 0-4095 range and then sending it to the DAC.
+   */
   int analog_signal = map(pwm_signal, 0, 255, 0, 4095);
   writeToAnalog(analog_signal);
 
