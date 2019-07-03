@@ -2,22 +2,23 @@
 
 import rospy
 from nav_msgs.msg import OccupancyGrid
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import PoseStamped
 
 class TestMap:
     def __init__(self):
         # ROS Objects
         rospy.init_node("test_map_generator")
         self.map_pub = rospy.Publisher("~map", OccupancyGrid, queue_size=1)
-        self.target_pub = rospy.Publisher("~target", PointStamped, queue_size=1)
+        self.target_pub = rospy.Publisher("~target", PoseStamped, queue_size=1)
         self.rate = rospy.Rate(10)
         self.test_map = OccupancyGrid()
 
         # Target point
-        self.target = PointStamped()
+        self.target = PoseStamped()
         self.target.header.frame_id = "odom"
-        self.target.point.x = 13
-        self.target.point.y = 5
+        self.target.pose.position.x = 13
+        self.target.pose.position.y = 5
+        self.target.pose.orientation.z = -0.78539816339
 
         # Create Map
         self.test_map.header.frame_id = "odom"
