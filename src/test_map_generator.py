@@ -2,7 +2,8 @@
 
 import rospy
 from nav_msgs.msg import OccupancyGrid
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Quaternion
+from tf.transformations import quaternion_from_euler
 
 class TestMap:
     def __init__(self):
@@ -18,24 +19,25 @@ class TestMap:
         self.target.header.frame_id = "odom"
         self.target.pose.position.x = 13
         self.target.pose.position.y = 5
-        self.target.pose.orientation.z = -0.78539816339
+        quat_target = quaternion_from_euler(0,0,-0.78539816339)
+        self.target.pose.orientation = Quaternion(quat_target[0], quat_target[1], quat_target[2], quat_target[3])
 
         # Create Map
         self.test_map.header.frame_id = "odom"
-        self.test_map.info.width = 200
-        self.test_map.info.height = 200
-        self.test_map.info.resolution = 0.10
+        self.test_map.info.width = 40
+        self.test_map.info.height = 40
+        self.test_map.info.resolution = 0.50
         self.test_map.info.origin.position.x = -2
         self.test_map.info.origin.position.y = -10# Create obstacles
 
         # Add obstacles
         self.test_map.data = [0] * (self.test_map.info.width*self.test_map.info.height)
-        for i in range(100, 151):
-            for j in range(100, 126):
+        for i in range(20, 31):
+            for j in range(20, 26):
                 self.test_map.data[self.rowMajorTo1D(i, j, self.test_map.info.width)] = 100
 
-        for i in range(20,41):
-            for j in range(160,181):
+        for i in range(4,9):
+            for j in range(32,37):
                 self.test_map.data[self.rowMajorTo1D(i, j, self.test_map.info.width)] = 100
 
     def spin(self):
