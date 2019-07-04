@@ -2,6 +2,7 @@
 
 import rospy
 from nav_msgs.msg import OccupancyGrid
+from gazebo_msgs.msg import ModelState
 from geometry_msgs.msg import PoseStamped, Quaternion
 from tf.transformations import quaternion_from_euler
 
