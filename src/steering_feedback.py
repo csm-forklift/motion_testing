@@ -63,8 +63,8 @@ class SteeringController():
         # TODO: makes these ROS parameters
         self.angle_tolerance = 0.02 # stops moving the motor when the angle is within +/- the tolerance of the desired setpoint
         # Max and Min angles to turn of the velocity if they are reached
-        self.max_angle = 75*(math.pi/180.)
-        self.min_angle = -75*(math.pi/180.)
+        self.max_angle = rospy.get_param("/forklift/steering/max_angle", 75*(math.pi/180.))
+        self.min_angle = rospy.get_param("/forklift/steering/min_angle", -75*(math.pi/180.))
         self.velocity_tolerance = 0.01
 
         # DEBUG: print max angle values used
