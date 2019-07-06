@@ -23,23 +23,41 @@ class TestMap:
         quat_target = quaternion_from_euler(0,0,-0.78539816339)
         self.target.pose.orientation = Quaternion(quat_target[0], quat_target[1], quat_target[2], quat_target[3])
 
-        # Create Map
+        # Create Large Map
         self.test_map.header.frame_id = "odom"
-        self.test_map.info.width = 40
-        self.test_map.info.height = 40
+        self.test_map.info.width = 80
+        self.test_map.info.height = 80
         self.test_map.info.resolution = 0.50
-        self.test_map.info.origin.position.x = -2
-        self.test_map.info.origin.position.y = -10# Create obstacles
+        self.test_map.info.origin.position.x = -12
+        self.test_map.info.origin.position.y = -20# Create obstacles
 
         # Add obstacles
         self.test_map.data = [0] * (self.test_map.info.width*self.test_map.info.height)
-        for i in range(20, 31):
-            for j in range(20, 26):
+        for i in range(40, 51):
+            for j in range(40, 46):
                 self.test_map.data[self.rowMajorTo1D(i, j, self.test_map.info.width)] = 100
 
-        for i in range(4,9):
-            for j in range(32,37):
+        for i in range(24,29):
+            for j in range(52,57):
                 self.test_map.data[self.rowMajorTo1D(i, j, self.test_map.info.width)] = 100
+
+        # # Create Small Map
+        # self.test_map.header.frame_id = "odom"
+        # self.test_map.info.width = 40
+        # self.test_map.info.height = 40
+        # self.test_map.info.resolution = 0.50
+        # self.test_map.info.origin.position.x = -2
+        # self.test_map.info.origin.position.y = -10# Create obstacles
+        #
+        # # Add obstacles
+        # self.test_map.data = [0] * (self.test_map.info.width*self.test_map.info.height)
+        # for i in range(20, 31):
+        #     for j in range(20, 26):
+        #         self.test_map.data[self.rowMajorTo1D(i, j, self.test_map.info.width)] = 100
+        #
+        # for i in range(4,9):
+        #     for j in range(32,37):
+        #         self.test_map.data[self.rowMajorTo1D(i, j, self.test_map.info.width)] = 100
 
     def spin(self):
         while not rospy.is_shutdown():
