@@ -43,10 +43,10 @@
     <!-- Steering Control Nodes -->
     <!--========================-->
     <!-- The arduino running this code can be an UNO or a MEGA and should be running "motion_testing/src/steering_publish/steering_publish.ino", see file for wiring -->
-    <node pkg="rosserial_python" type="serial_node.py" name="steering_node_arduino">
+    <node pkg="rosserial_python" type="serial_node.py" name="steering_feedback_arduino">
         <param name="port" value="$(arg port_steering)" />
     </node>
-    <node pkg="sensors" type="steering_node" name="steering_node" />
+    <node pkg="sensors" type="steering_feedback" name="steering_feedback" />
     
     <!--========================-->
     <!-- Velocity Control Nodes -->

@@ -65,7 +65,7 @@ const int NUM_REPEATS = 3;
 //===== ROS Objects =====//
 ros::NodeHandle nh;
 std_msgs::Bool is_moving;
-ros::Publisher moving_pub("steering_feedback/motor/is_moving", &is_moving);
+ros::Publisher moving_pub("steering_node/motor/is_moving", &is_moving);
 ros::Subscriber<std_msgs::Bool> pedal_switch_sub("velocity_node/pedal_switch", &switchCallback);
 ros::Subscriber<std_msgs::UInt8> pedal_fraction_sub("velocity_node/pedal_pwm", &pedalCallback);
 

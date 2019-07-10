@@ -55,7 +55,7 @@ class PIDController:
         self.velocity_sub = rospy.Subscriber("velocity_node/velocity", Float64, self.velocity_callback, queue_size=3)
         self.setpoint_sub = rospy.Subscriber("velocity_node/velocity_setpoint", Float64, self.setpoint_callback, queue_size=3)
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size=3)
-        self.gear_sub = rospy.Subscriber("/forklift/gear", Int8, self.gear_callback, queue_size=3)
+        self.gear_sub = rospy.Subscriber("/velocity_node/gear", Int8, self.gear_callback, queue_size=3)
         self.control_pub = rospy.Publisher("velocity_node/pedal_pwm", UInt8, queue_size=5)
 
         # Rate at which to run the control loop, based on 'delta_t'

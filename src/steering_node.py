@@ -68,7 +68,7 @@ class SteeringController():
         self.velocity_tolerance = 0.01
 
         # DEBUG: print max angle values used
-        print("[steering_feedback] Bounding setpoint angles to, Max: {0:0.3f} ({1:0.3f} deg) Min: {2:0.3f} ({3:0.3f} deg)".format(self.max_angle, self.max_angle*(180/math.pi), self.min_angle, self.min_angle*(180/math.pi)))
+        print("[steering_node] Bounding setpoint angles to, Max: {0:0.3f} ({1:0.3f} deg) Min: {2:0.3f} ({3:0.3f} deg)".format(self.max_angle, self.max_angle*(180/math.pi), self.min_angle, self.min_angle*(180/math.pi)))
 
         self.max_accel_scale = 0.003
         self.max_vel_scale = 0.17
@@ -96,7 +96,7 @@ class SteeringController():
         #=========================#
         # Create ROS Node Objects
         #=========================#
-        rospy.init_node("steering_feedback")
+        rospy.init_node("steering_node")
         # Specify general parameters
         self.rl_axes = 3
         self.manual_deadman_button = rospy.get_param("~manual_deadman", 4)
@@ -118,7 +118,7 @@ class SteeringController():
         self.setpoint_sub = rospy.Subscriber("/steering_node/angle_setpoint", Float64, self.setpoint_callback, queue_size = 1)
         self.position_pub = rospy.Publisher("~motor/position", Float64, queue_size = 10)
         self.velocity_pub = rospy.Publisher("~motor/velocity", Float64, queue_size = 10)
-        self.moving_sub = rospy.Subscriber("/steering_feedback/motor/is_moving", Bool, self.moving_callback, queue_size = 3)
+        self.moving_sub = rospy.Subscriber("/steering_node/motor/is_moving", Bool, self.moving_callback, queue_size = 3)
         self.angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float64, self.angle_callback, queue_size = 3)
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size = 1)
         # Run 'spin' loop at 30Hz

@@ -36,7 +36,7 @@ class PathHandler:
         self.maneuver_path2_sub = rospy.Subscriber("/maneuver_path2", PathWithGear, self.maneuverPath2Callback, queue_size=1)
         self.approach_path_sub = rospy.Subscriber("/approach_path", Path, self.approachPathCallback, queue_size=1)
         self.path_pub = rospy.Publisher("/path", Path, queue_size=1)
-        self.gear_pub = rospy.Publisher("/forklift/gear", Int8, queue_size=3)
+        self.gear_pub = rospy.Publisher("/velocity_node/gear", Int8, queue_size=3)
 
         # Set up OptimizeManeuver service, send any bool value to have it perform the optimization then it returns a bool indicating whether the optimization was successful
         rospy.wait_for_service("/maneuver_path/optimize_maneuver")
@@ -47,35 +47,36 @@ class PathHandler:
 
     def spin(self):
         while not rospy.is_shutdown():
-            if (self.trigger_optimization):
-                resp = self.optimizeManeuver(True)
-                if (resp.optimization_successful):
-                    self.trigger_optimization = False
+            if (self.current_path < 4):
+                if (self.trigger_optimization):
+                    resp = self.optimizeManeuver(True)
+                    if (resp.optimization_successful):
+                        self.trigger_optimization = False
 
-            if (self.paths[self.current_path] is not None and self.current_path < 4):
-                # DEBUG:
-                print("Publishing current path (%d):" % self.current_path)
-                print(self.paths[self.current_path])
-
-                while not rospy.get_param("/goal_bool", False):
-                    self.path_pub.publish(self.paths[self.current_path])
-                    gear = Int8()
-                    gear.data = self.gears[self.current_path]
-                    self.gear_pub.publish(gear)
-                    self.rate.sleep()
-
-                # Update the path and gear and pause to let the gear switch
-                self.current_path += 1
-
-                if (self.current_path < 4):
-                    # Update the gear and wait 1 second for it to shift
-                    self.gear_pub.publish(self.gears[self.current_path])
-                    time.sleep(1)
-                    # Publish the new path to reset the goal
-                    self.path_pub.publish(self.paths[self.current_path])
-                else:
+                if (self.paths[self.current_path] is not None):
                     # DEBUG:
-                    rospy.loginfo("All paths complete.")
+                    print("Publishing current path (%d) using gear (%d):" % (self.current_path, self.gears[self.current_path]))
+                    print(self.paths[self.current_path])
+
+                    while not rospy.get_param("/goal_bool", False):
+                        self.path_pub.publish(self.paths[self.current_path])
+                        gear = Int8()
+                        gear.data = self.gears[self.current_path]
+                        self.gear_pub.publish(gear)
+                        self.rate.sleep()
+
+                    # Update the path and gear and pause to let the gear switch
+                    self.current_path += 1
+
+                    if (self.current_path < 4):
+                        # Update the gear and wait 1 second for it to shift
+                        self.gear_pub.publish(self.gears[self.current_path])
+                        time.sleep(1)
+                        # Publish the new path to reset the goal
+                        self.path_pub.publish(self.paths[self.current_path])
+                    else:
+                        # DEBUG:
+                        rospy.loginfo("All paths complete.")
 
     def obstacleAvoidanceCallback(self, msg):
         self.paths[0] = msg
