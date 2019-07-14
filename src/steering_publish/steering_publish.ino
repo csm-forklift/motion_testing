@@ -8,6 +8,17 @@
  * Arduino    Steering Potentiometer
  * A0   ->    Signal (Black)
  * GND  ->    GND (yellow)
+ * 
+ * Diagram
+ *         Forklift wires should remain connected to each other
+ *                      Forklift
+ *                X-------5V
+ * Arduino
+ * A0----------R??Ohm-----Signal
+ *          |
+ *       C0.1uF
+ *          |
+ * GND--------------------GND
  */
 
 // ROS Includes
