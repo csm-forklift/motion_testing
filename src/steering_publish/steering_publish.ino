@@ -14,7 +14,7 @@
  *                      Forklift
  *                X-------5V
  * Arduino
- * A0----------R??Ohm-----Signal
+ * A0----------R100KOhm-----Signal
  *          |
  *       C0.1uF
  *          |
