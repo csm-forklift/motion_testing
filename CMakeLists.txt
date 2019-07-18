@@ -55,12 +55,11 @@ add_message_files(
   PathWithGear.msg
 )
 
-## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+# Generate services in the 'srv' folder
+add_service_files(
+  FILES
+  SetTarget.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -73,6 +72,7 @@ add_message_files(
 generate_messages(
   DEPENDENCIES
   nav_msgs
+  geometry_msgs
 )
 
 ###################################

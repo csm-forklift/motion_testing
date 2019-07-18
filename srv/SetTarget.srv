@@ -1,0 +1,11 @@
+# Requests with a geometry_msgs/Pose that represents the desired target position
+# for picking up a paper roll. The orientation points towards the desired 
+# approach face. This is flipped 180 deg from the vehicles approach direction. 
+# So the vehicle is lined up when its orientation is 180 deg from the roll's 
+# target orientation. Returns a boolean response indicating whether the pick
+# operation was successful.
+
+geometry_msgs/PoseStamped roll_pose # roll target position and desired approach orientation
+---
+bool success # indicates whether the grasp was successful or not
+string message # For debugging

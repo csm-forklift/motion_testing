@@ -1,0 +1,59 @@
+<launch>
+
+    <!--==========================-->
+    <!-- Parameters and Arguments -->
+    <!--==========================-->
+    <arg name="port_imu" default="/dev/ttyACM0"/>
+    <arg name="port_steering" default="/dev/ttyACM1"/>
+    <!-- <arg name="port_accelerator" default="/dev/ttyACM2" /> -->
+    <arg name="bus_name" default="slcan0"/>
+
+    <!--===================-->
+    <!-- Velocity Feedback -->
+    <!--===================-->
+    <node pkg="sensors" type="velocity_node.py" name="velocity_node"/>
+    <node pkg="sensors" type="velocity_conversion" name="velocity_conversion"/>
+
+    <!--===================-->
+    <!-- Steering Feedback -->
+    <!--===================-->
+    <!-- The arduino running this code can be an UNO or a MEGA and should be running "motion_testing/src/steering_publish/steering_publish.ino", see file for wiring -->
+    <node pkg="rosserial_python" type="serial_node.py" name="steering_feedback_arduino">
+        <param name="port" value="$(arg port_steering)" />
+    </node>
+    <node pkg="sensors" type="steering_feedback" name="steering_feedback" />
+
+    <!--====================-->
+    <!-- IMU Data Colection -->
+    <!--====================-->
+    <!-- The arduino running this code should be an Arduino MEGA and be running "sensors/src/two_imu_raw_msg_pub/two_imu_raw_msg_pub.ino", see file for wiring -->
+    <rosparam file="$(find sensors)/config/imu0_calibration.yaml" command="load" ns="imu0/calibration" />
+    <rosparam file="$(find sensors)/config/imu1_calibration.yaml" command="load" ns="imu1/calibration" />
+    <node pkg="rosserial_python" type="serial_node.py" name="imu_node">
+        <param name="port" value="$(arg port_imu)" />
+    </node>
+
+    <!-- IMU0 Link Transform (remove when you start using 'setup_tf') -->
+    <!-- Distances
+    x: -1.126
+    y: 0
+    z: 1.857 (frame height - (axle diameter / 2))
+    -->
+    <!-- IMU1 Link Transform -->
+    <!-- Distances
+    x: -1.545
+    y: -0.477
+    z: 1.857
+    -->
+    <node pkg="tf" type="static_transform_publisher" name="imu0_broadcaster"
+        args="-1.126 0 1.857 0 0 0 1 base_link imu0_link 100" />
+    <node pkg="tf" type="static_transform_publisher" name="imu1_broadcaster"
+        args="-1.545 -0.477 1.857 0 0 0 1 base_link imu1_link 100" />
+
+    <!-- This node corrects the IMU gyro data with a scaling factor -->
+    <node pkg="sensors" name="calculate_covariance" type="calculate_covariance.py">
+        <remap from="/arduino/imu0_in" to="/arduino/imu0"/>
+        <remap from="/arduino/imu1_in" to="/arduino/imu1"/>
+    </node>
+
+</launch>

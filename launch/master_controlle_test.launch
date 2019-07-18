@@ -1,0 +1,5 @@
+<!-- For testing the master controller -->
+<launch>
+    <node pkg="grasping" name="maneuver_path" type="maneuver_path.py"/>
+    <node pkg="motion_testing" name="master_controller" type="master_controller.py" output="screen"/>
+</launch>
