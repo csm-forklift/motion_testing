@@ -7,8 +7,7 @@ List of Control Modes
 0: no controllers running
 1: forward path tracking (velocity_controller_forward)
 2: reverse path tracking (velocity_controller_reverse)
-3: approach path tracking (approach_path)
-4: approach control + clamp control (approach_control, clamp_control)
+3: approach control + clamp control (approach_control, clamp_control)
 '''
 
 
@@ -54,7 +53,7 @@ class MasterController:
         # ROS Publishers and Subscribers
         self.path_pub = rospy.Publisher("/path", Path, queue_size=1)
         self.gear_pub = rospy.Publisher("/velocity_node/gear", Int8, queue_size=3)
-        self.control_mode_pub = rospy.Publisher("/control_mode", Int8, queue_size=3, True) # "True" makes it latching
+        self.control_mode_pub = rospy.Publisher("/control_mode", Int8, queue_size=3, latch=True) # "True" makes it latching
         self.clamp_movement_pub = rospy.Publisher("/clamp_switch_node/clamp_movement", Float32, queue_size=3)
         self.clamp_grasp_pub = rospy.Publisher("/clamp_switch_node/clamp_grasp", Float32, queue_size=3)
         self.roll_pose_pub = rospy.Publisher("/roll/pose", PoseStamped, queue_size=3)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
+from motion_testing.srv import SetTarget, SetTargetRequest, SetTargetResponse
 from nav_msgs.msg import OccupancyGrid
 from gazebo_msgs.msg import ModelState
 from geometry_msgs.msg import PoseStamped, Quaternion
@@ -10,8 +11,13 @@ class TestMap:
     def __init__(self):
         # ROS Objects
         rospy.init_node("test_map_generator")
-        self.map_pub = rospy.Publisher("~map", OccupancyGrid, queue_size=1)
-        self.target_pub = rospy.Publisher("~target", PoseStamped, queue_size=1)
+        self.map_pub = rospy.Publisher("~map", OccupancyGrid, queue_size=1, latch=True)
+        self.target_pub = rospy.Publisher("~target", PoseStamped, queue_size=1, latch=True)
+        rospy.wait_for_service("/master_controller/set_pick_target")
+        try:
+            self.setTarget = rospy.ServiceProxy("/master_controller/set_pick_target", SetTarget)
+        except rospy.ServiceException, e:
+            print("Service call failed: %s", e)
         self.rate = rospy.Rate(10)
         self.test_map = OccupancyGrid()
 
@@ -63,7 +69,12 @@ class TestMap:
         while not rospy.is_shutdown():
             self.test_map.header.stamp = rospy.Time.now()
             self.map_pub.publish(self.test_map)
-            self.target_pub.publish(self.target)
+            #self.target_pub.publish(self.target)
+            resp = self.setTarget(self.target)
+            print(resp.success)
+            print(resp.message)
+            while True:
+                pass
             self.rate.sleep()
 
     def rowMajorTo1D(self, row, col, width):
