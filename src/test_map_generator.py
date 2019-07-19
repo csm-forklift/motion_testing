@@ -24,7 +24,11 @@ class TestMap:
         # Target point
         self.target = PoseStamped()
         self.target.header.frame_id = "odom"
-        self.target.pose.position.x = 13
+        # Full path point
+        # self.target.pose.position.x = 13
+        # self.target.pose.position.y = 5
+        # Short path point
+        self.target.pose.position.x = 3
         self.target.pose.position.y = 5
         quat_target = quaternion_from_euler(0,0,-0.78539816339)
         self.target.pose.orientation = Quaternion(quat_target[0], quat_target[1], quat_target[2], quat_target[3])
@@ -34,8 +38,12 @@ class TestMap:
         self.test_map.info.width = 80
         self.test_map.info.height = 80
         self.test_map.info.resolution = 0.50
-        self.test_map.info.origin.position.x = -12
-        self.test_map.info.origin.position.y = -20# Create obstacles
+        # Full path origin
+        # self.test_map.info.origin.position.x = -12
+        # self.test_map.info.origin.position.y = -20
+        # Short path origin
+        self.test_map.info.origin.position.x = -22
+        self.test_map.info.origin.position.y = -20
 
         # Add obstacles
         self.test_map.data = [0] * (self.test_map.info.width*self.test_map.info.height)
@@ -70,11 +78,8 @@ class TestMap:
             self.test_map.header.stamp = rospy.Time.now()
             self.map_pub.publish(self.test_map)
             #self.target_pub.publish(self.target)
-            resp = self.setTarget(self.target)
-            print(resp.success)
-            print(resp.message)
-            while True:
-                pass
+            # while True:
+            #     pass
             self.rate.sleep()
 
     def rowMajorTo1D(self, row, col, width):
