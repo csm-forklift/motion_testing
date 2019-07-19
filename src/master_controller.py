@@ -12,7 +12,7 @@ List of Control Modes
 
 
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PointStamped
 from grasping.srv import OptimizeManeuver, OptimizeManeuverRequest, OptimizeManeuverResponse
 from motion_testing.srv import SetTarget, SetTargetRequest, SetTargetResponse
 from motion_testing.msg import PathWithGear
@@ -20,6 +20,7 @@ from nav_msgs.msg import Path, Odometry
 from std_msgs.msg import Bool, Int8, Float32
 import math
 import time
+import copy
 
 
 class MasterController:
@@ -50,13 +51,31 @@ class MasterController:
         self.gears[self.obstacle_path] = -1 # obstacle avoidance is always in reverse
         self.gears[self.approach_path] = 1 # roll approach is always forward
 
+        # Operation state flow
+        self.operation_mode = 0 # operation mode 0 waits for a service call
+        self.grasp_finished = False # inidcates when grasp operation is fully complete
+        self.grasp_success = False # indicates whether the roll has been grasped by the clamp
+        self.forklift_current_pose = PoseStamped()
+        self.target_current_pose = PoseStamped()
+
+        # FIXME: making True for testing purposes only, return to False when putting on the system
+        self.switch_status_down = True
+        self.switch_status_open = True
+
+        # Make sure all controllers start OFF
+        self.control_mode = Int8()
+        self.control_mode.data = 0 # determines which controllers can be operating (see top of file for notes)
+
+        # Publishing rate
+        self.rate = rospy.Rate(30)
+
         # ROS Publishers and Subscribers
         self.path_pub = rospy.Publisher("/path", Path, queue_size=1)
         self.gear_pub = rospy.Publisher("/velocity_node/gear", Int8, queue_size=3)
-        self.control_mode_pub = rospy.Publisher("/control_mode", Int8, queue_size=3, latch=True) # "True" makes it latching
+        self.control_mode_pub = rospy.Publisher("/control_mode", Int8, queue_size=3, latch=True)
         self.clamp_movement_pub = rospy.Publisher("/clamp_switch_node/clamp_movement", Float32, queue_size=3)
         self.clamp_grasp_pub = rospy.Publisher("/clamp_switch_node/clamp_grasp", Float32, queue_size=3)
-        self.roll_pose_pub = rospy.Publisher("/roll/pose", PoseStamped, queue_size=3)
+        self.roll_pose_pub = rospy.Publisher("/roll/pose", PoseStamped, queue_size=3, latch=True)
         self.forklift_approach_pub = rospy.Publisher("/forklift/approach_pose", PoseStamped, queue_size=3)
 
         self.obstacle_avoidance_sub = rospy.Subscriber("/obstacle_avoidance_path", Path, self.obstacleAvoidanceCallback, queue_size=1)
@@ -68,15 +87,18 @@ class MasterController:
         self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odomCallback, queue_size=3)
         self.grasp_success_sub = rospy.Subscriber("/clamp_control/grasp_success", Bool, self.graspSuccessCallback, queue_size=3)
         self.grasp_finished_sub = rospy.Subscriber("/clamp_control/grasp_finished", Bool, self.graspFinishedCallback, queue_size=3)
+        self.roll_position_sub = rospy.Subscriber("/cylinder_detection/point", PointStamped, self.rollPositionCallback, queue_size=3)
 
-        # Set Target Services
-        self.pick_target_srv = rospy.Service("~set_pick_target", SetTarget, self.pickTarget)
-        self.drop_target_srv = rospy.Service("~set_drop_target", SetTarget, self.dropTarget)
+        #=====#
+        # Wait for optimization maneuver service because it is require
+        # before the set pick target service can run
+        #=====#
+        # Set up OptimizeManeuver service, send any bool value to have it
+        # perform the optimization then it returns a bool indicating whether the
+        # optimization was successful
+        print("="*30)
+        print("Waiting for maneuver service")
 
-        # Publishing rate
-        self.rate = rospy.Rate(30)
-
-        # Set up OptimizeManeuver service, send any bool value to have it perform the optimization then it returns a bool indicating whether the optimization was successful
         self.trigger_optimization = True
         rospy.wait_for_service("/maneuver_path/optimize_maneuver")
         try:
@@ -84,37 +106,31 @@ class MasterController:
         except rospy.ServiceException, e:
             print("Optimization service call failed: %s" % e)
 
-        # Operation state flow
-        self.operation_mode = 0 # operation mode 0 waits for a service call
-        self.grasp_finished = False # inidcates when grasp operation is fully complete
-        self.grasp_success = False # indicates whether the roll has been grasped by the clamp
-        self.forklift_current_pose = PoseStamped()
-        self.target_current_pose = PoseStamped()
-        self.switch_status_down = True
-        self.switch_status_open = True
+        # Set Target Services
+        print("="*30)
+        print("Creating service for pick")
 
-        # Make sure all controllers start OFF
-        self.control_mode = Int8()
-        self.control_mode.data = 0 # determines which controllers can be operating (see top of file for notes)
-        self.control_mode_pub.publish(self.control_mode)
+        self.pick_target_srv = rospy.Service("~set_pick_target", SetTarget, self.pickTarget)
+        self.drop_target_srv = rospy.Service("~set_drop_target", SetTarget, self.dropTarget)
+
 
     def spin(self):
         while not rospy.is_shutdown():
             self.rate.sleep()
 
     def obstacleAvoidanceCallback(self, msg):
-        self.paths[self.obstacle_path] = msg
+        self.paths[self.obstacle_path] = copy.deepcopy(msg)
 
     def maneuverPath1Callback(self, msg):
-        self.paths[self.maneuver_path1] = msg.path
+        self.paths[self.maneuver_path1] = copy.deepcopy(msg.path)
         self.gears[self.maneuver_path1] = msg.gear
 
     def maneuverPath2Callback(self, msg):
-        self.paths[self.maneuver_path2] = msg.path
+        self.paths[self.maneuver_path2] = copy.deepcopy(msg.path)
         self.gears[self.maneuver_path2] = msg.gear
 
     def approachPathCallback(self, msg):
-        self.paths[self.approach_path] = msg
+        self.paths[self.approach_path] = copy.deepcopy(msg)
 
     def optimizationCallback(self, msg):
         self.optimization_successful = msg.data
@@ -126,8 +142,8 @@ class MasterController:
         self.switch_status_open = msg.data
 
     def odomCallback(self, msg):
-        self.forklift_current_pose.header = msg.header
-        self.forklift_current_pose.pose = msg.pose.pose
+        self.forklift_current_pose.header = copy.deepcopy(msg.header)
+        self.forklift_current_pose.pose = copy.deepcopy(msg.pose.pose)
 
     def graspSuccessCallback(self, msg):
         self.grasp_success = msg.data
@@ -135,10 +151,16 @@ class MasterController:
     def graspFinishedCallback(self, msg):
         self.grasp_finished = msg.data
 
+    def rollPositionCallback(self, msg):
+        self.target_current_pose.pose.position = copy.deepcopoy(msg.point)
+
     def distanceFromTarget(self):
         '''
         Calculate the distance from the forklift's current position to the roll position
         '''
+        # DEBUG:
+        print("Calculating distance using forklift: (%0.4f, %0.4f)" % (self.forklift_current_pose.pose.position.x, self.forklift_current_pose.pose.position.y))
+
         distance = math.sqrt((self.forklift_current_pose.pose.position.x - self.target_current_pose.pose.position.x)**2 + (self.forklift_current_pose.pose.position.y - self.target_current_pose.pose.position.y)**2)
 
         return distance
@@ -160,23 +182,38 @@ class MasterController:
 
         # Begin grasping sequence
         self.trigger_optimization = True
-        self.operation_mode = 2
+        self.operation_mode = 1
 
         message =  "Grasp sequence finish. Waiting for drop target."
 
         while (self.grasp_finished is not True):
             # Run optimization to obtain paths from current position to the maneuver to the roll
             if (self.operation_mode == 1):
+                print(30*"=")
+                print("Optimizing maneuver")
+                print(30*"=")
                 resp = self.optimizeManeuver(True)
 
                 # DEBUG:
                 rospy.loginfo("Optimization result: %d", resp.optimization_successful)
 
                 if (resp.optimization_successful):
+                    rospy.wait_for_message("/obstacle_avoidance_path", Path)
+                    # Publish path and gear and delay
+                    self.path_pub.publish(self.paths[self.obstacle_path])
+                    gear = Int8()
+                    gear.data = self.gears[self.obstacle_path]
+                    self.gear_pub.publish(gear)
+                    time.sleep(1)
+
                     self.operation_mode = 2
+
 
             # Avoid obstacles on the way to the maneuver path
             if (self.operation_mode == 2):
+                print(30*"=")
+                print("Obstacle avoidance path")
+                print(30*"=")
                 if (self.paths[self.obstacle_path] is not None):
 
                     self.control_mode.data = 2 # reverse controller
@@ -188,6 +225,14 @@ class MasterController:
                         gear.data = self.gears[self.obstacle_path]
                         self.gear_pub.publish(gear)
                         self.rate.sleep()
+
+                    # Publish next path and delay
+                    self.path_pub.publish(self.paths[self.maneuver_path1])
+                    gear = Int8()
+                    gear.data = self.gears[self.maneuver_path1]
+                    self.gear_pub.publish(gear)
+                    time.sleep(1)
+
                     self.operation_mode = 3
                 else:
                     message = "Error: obstacle path was not generated"
@@ -196,6 +241,9 @@ class MasterController:
 
             # Drive first segment of maneuver
             if (self.operation_mode == 3):
+                print(30*"=")
+                print("Maneuver part 1")
+                print(30*"=")
                 if (self.paths[self.maneuver_path1] is not None):
 
                     if (self.gears[self.maneuver_path1] < 0):
@@ -210,6 +258,14 @@ class MasterController:
                         gear.data = self.gears[self.maneuver_path1]
                         self.gear_pub.publish(gear)
                         self.rate.sleep()
+
+                    # Publish next path and delay
+                    self.path_pub.publish(self.paths[self.maneuver_path2])
+                    gear = Int8()
+                    gear.data = self.gears[self.maneuver_path2]
+                    self.gear_pub.publish(gear)
+                    self.rate.sleep()
+
                     self.operation_mode = 4
                 else:
                     message = "Error: maneuver path 1 was not generated"
@@ -218,6 +274,9 @@ class MasterController:
 
             # Drive second segment of maneuver
             if (self.operation_mode == 4):
+                print(30*"=")
+                print("Maneuver part 2")
+                print(30*"=")
                 if (self.paths[self.maneuver_path2] is not None):
 
                     if (self.gears[self.maneuver_path2] < 0):
@@ -232,6 +291,7 @@ class MasterController:
                         gear.data = self.gears[self.maneuver_path2]
                         self.gear_pub.publish(gear)
                         self.rate.sleep()
+
                     self.operation_mode = 5
                 else:
                     message = "Error: maneuver path 2 was not generated"
@@ -241,8 +301,11 @@ class MasterController:
             # Move clamp down and open to try to see the roll with the lidar
             # if the roll is seen, update the target position
             if (self.operation_mode == 5):
+                print(30*"=")
+                print("Move clamp to see roll")
+                print(30*"=")
                 # Turn controllers off
-                self.control_mode.data = 0
+                self.control_mode.data = 4
                 self.control_mode_pub.publish(self.control_mode)
 
                 # Open the clamp
@@ -259,25 +322,36 @@ class MasterController:
                     self.rate.sleep()
 
                 # Check if the roll pose has changed from the target specified by the service request. If so, publish the new roll and forklift poses to generate a new approach path
-                if ((self.target_current_pose.pose.position.x != msg.roll_pose.pose.position.x) or (self.target_current_pose.pose.position.y != msg.roll_pose.pose.position.y)):
+                if ((self.target_current_pose.pose.position.x != req.roll_pose.pose.position.x) or (self.target_current_pose.pose.position.y != req.roll_pose.pose.position.y)):
                     self.roll_pose_pub.publish(self.target_current_pose)
                     self.forklift_approach_pub.publish(self.forklift_current_pose)
+                    time.sleep(1)
+
+                # Publish next path and delay
+                self.path_pub.publish(self.paths[self.approach_path])
+                gear = Int8()
+                gear.data = self.gears[self.approach_path]
+                self.gear_pub.publish(gear)
 
                 self.operation_mode = 6
 
             # Follow the approach b-spline path to the roll until the vehicle is within the tolerance to switch from path tracking to relative position control
             if (self.operation_mode == 6):
+                print(30*"=")
+                print("Approach path")
+                print(30*"=")
 
                 self.control_mode.data = 1 # forward controller
                 self.control_mode_pub.publish(self.control_mode)
 
                 if (self.paths[self.approach_path] is not None):
-                    while (distanceFromTarget > self.roll_approach_radius):
+                    while (self.distanceFromTarget() > self.roll_approach_radius):
                         self.path_pub.publish(self.paths[self.approach_path])
                         gear = Int8()
                         gear.data = self.gears[self.approach_path]
                         self.gear_pub.publish(gear)
                         self.rate.sleep()
+
                     self.operation_mode = 7
                 else:
                     message = "Error: approach path was not generated"
@@ -286,8 +360,11 @@ class MasterController:
 
             # Approach roll using relative position
             if (self.operation_mode == 7):
+                print(30*"=")
+                print("Final grasp portion")
+                print(30*"=")
 
-                self.control_mode.data = 1 # approach + clamp control
+                self.control_mode.data = 3 # approach + clamp control
                 self.control_mode_pub.publish(self.control_mode)
 
                 while (self.grasp_finished == False):
