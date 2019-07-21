@@ -1,0 +1,43 @@
+<launch>
+
+    <!--==========================-->
+    <!-- Arguments and Parameters -->
+    <!--==========================-->
+    <arg name="manual_deadman" default="4" />
+    <arg name="autonomous_deadman" default="5" />
+    <arg name="timeout" default="1.0" />
+    <arg name="port_accelerator_encoder" default="/dev/ttyACM1" />
+
+    <!--========================-->
+    <!-- Steering Control Nodes -->
+    <!--========================-->
+    <node pkg="motion_testing" type="steering_node.py" name="steering_node" output="screen">
+        <param name="manual_deadman" value="$(arg manual_deadman)" />
+        <param name="autonomous_deadman" value="$(arg autonomous_deadman)" />
+        <param name="timeout" value="$(arg timeout)" />
+    </node>
+    
+    <!--========================-->
+    <!-- Velocity Control Nodes -->
+    <!--========================-->
+    <!-- The arduino running this code can be an UNO or a MEGA and should be running "motion_testing/src/accelerator_encoder_analog.ino", see file for wiring -->
+    <node pkg="rosserial_python" type="serial_node.py" name="accelerator_encoder_arduino">
+        <param name="port" value="$(arg port_accelerator_encoder)" />
+    </node>
+    <node pkg="motion_testing" type="velocity_two_pid_delta.py" name="velocity_two_pid_delta" output="screen">
+        <param name="manual_deadman" value="$(arg manual_deadman)" />
+        <param name="autonomous_deadman" value="$(arg autonomous_deadman)" />
+        <param name="timeout" value="$(arg timeout)" />
+        <param name="Kp1" value="1.0" />
+        <param name="Ki1" value="0" />
+        <param name="Kd1" value="0" />
+        <param name="Kp2" value="0.5" />
+        <param name="Ki2" value="0" />
+        <param name="Kd2" value="0" />
+        <param name="delta_max" value="10" />
+        <param name="delta_min" value="-1" />
+        <param name="error_tolerance" value="0.3" />
+        <param name="error_exponent" value="1.0" />
+    </node>
+
+</launch>

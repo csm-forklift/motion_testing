@@ -1,0 +1,27 @@
+<launch>
+    
+    <!--==========================-->
+    <!-- Arguments and Parameters -->
+    <!--==========================-->
+    <arg name="manual_deadman" default="4"/>
+    <arg name="autonomous_deadman" default="5"/>
+    <arg name="timeout" default="1.0"/>
+    <arg name="joy_dev" default="/dev/input/js0"/>
+
+    <!--========================-->
+    <!-- Joystick Control Nodes -->
+    <!--========================--> 
+    <node pkg="joy" type="joy_node" name="joy_node">
+        <param name="dev" value="$(arg joy_dev)" />
+        <param name="deadzone" value="0.3" />
+        <param name="autorepeat_rate" value="20" />
+    </node>
+
+    <node pkg="motion_testing" type="joystick_control.py" name="joystick_control" output="screen">
+        <param name="manual_deadman" value="$(arg manual_deadman)"/>
+        <param name="autonomous_deadman" value="$(arg autonomous_deadman)"/>
+        <param name="timeout" value="$(arg timeout)"/>
+        <param name="vel_max" value="0.5"/>
+    </node>
+    
+</launch>

@@ -23,6 +23,11 @@ import time
 import copy
 
 
+class DebugTest:
+    def __init__(self, starting_mode=1, allowed_modes=[1]):
+        self.starting_mode = starting_mode
+        self.allowed_modes = allowed_modes
+
 class MasterController:
     def __init__(self):
         # Read in ROS parameters
@@ -34,10 +39,10 @@ class MasterController:
         # Used to test only a small portion of the code. This allows for
         # splitting up the various path tracking operations and only do the
         # desired ones at a time.
-        self.debug_test = rospy.get_param("~/debug_test", "None")
+        self.debug_test = rospy.get_param("~debug_test", "none")
         # These are the currently available tests that have been implemented.
         # Add new ones to the list as the need arises.
-        self.available_debug_tests = ["obstacle"]
+        self.available_debug_tests = {"none": DebugTest(starting_mode=1, allowed_modes=[1,2,3,4,5,6,7]), "grasp": DebugTest(starting_mode=5, allowed_modes=[5,6,7])}
 
         # Path indices
         self.obstacle_path = 0
@@ -52,7 +57,13 @@ class MasterController:
         self.gears[self.approach_path] = 1 # roll approach is always forward
 
         # Operation state flow
-        self.operation_mode = 0 # operation mode 0 waits for a service call
+        if self.debug_test in self.available_debug_tests.keys():
+            self.operation_mode = self.available_debug_tests[self.debug_test].starting_mode
+        else:
+            self.debug_test = "none"
+            self.operation_mode = 1 # start in the first mode, wait for service call
+        print("Starting mode set to: %d" % self.operation_mode)
+
         self.grasp_finished = False # inidcates when grasp operation is fully complete
         self.grasp_success = False # indicates whether the roll has been grasped by the clamp
         self.forklift_current_pose = PoseStamped()
@@ -116,6 +127,12 @@ class MasterController:
 
     def spin(self):
         while not rospy.is_shutdown():
+            if (self.operation_mode not in self.available_debug_tests[self.debug_test].allowed_modes):
+                # # Restart operation
+                # self.operation_mode = self.available_debug_tests[self.debug_test].starting_mode
+
+                # Stop operation
+                self.operation_mode = 0
             self.rate.sleep()
 
     def obstacleAvoidanceCallback(self, msg):
@@ -158,8 +175,8 @@ class MasterController:
         '''
         Calculate the distance from the forklift's current position to the roll position
         '''
-        # DEBUG:
-        print("Calculating distance using forklift: (%0.4f, %0.4f)" % (self.forklift_current_pose.pose.position.x, self.forklift_current_pose.pose.position.y))
+        # # DEBUG:
+        # print("Calculating distance using forklift: (%0.4f, %0.4f)" % (self.forklift_current_pose.pose.position.x, self.forklift_current_pose.pose.position.y))
 
         distance = math.sqrt((self.forklift_current_pose.pose.position.x - self.target_current_pose.pose.position.x)**2 + (self.forklift_current_pose.pose.position.y - self.target_current_pose.pose.position.y)**2)
 
@@ -182,9 +199,8 @@ class MasterController:
 
         # Begin grasping sequence
         self.trigger_optimization = True
-        self.operation_mode = 1
 
-        message =  "Grasp sequence finish. Waiting for drop target."
+        message = "Grasp sequence finished. Waiting for drop target."
 
         while (self.grasp_finished is not True):
             # Run optimization to obtain paths from current position to the maneuver to the roll
@@ -324,8 +340,10 @@ class MasterController:
                 # Check if the roll pose has changed from the target specified by the service request. If so, publish the new roll and forklift poses to generate a new approach path
                 if ((self.target_current_pose.pose.position.x != req.roll_pose.pose.position.x) or (self.target_current_pose.pose.position.y != req.roll_pose.pose.position.y)):
                     self.roll_pose_pub.publish(self.target_current_pose)
-                    self.forklift_approach_pub.publish(self.forklift_current_pose)
-                    time.sleep(1)
+
+                # Update approach path using forklift's current position
+                self.forklift_approach_pub.publish(self.forklift_current_pose)
+                time.sleep(1)
 
                 # Publish next path and delay
                 self.path_pub.publish(self.paths[self.approach_path])
