@@ -9,7 +9,7 @@
  * You should use the "X" mode for the controller as this code will be designed
  * for that button/axes configuration.
  *
- * This hsould be used with an Arduino loaded with "accelerator_write.ino"
+ * This should be used with an Arduino loaded with "accelerator_write.ino"
  */
 
 #include <iostream>
@@ -17,6 +17,7 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 #include <sensor_msgs/Joy.h>
+#include <std_msgs/Int8.h>
 
 class AcceleratorNode
 {
@@ -25,18 +26,22 @@ private:
     ros::NodeHandle nh; // global handle
     ros::NodeHandle nh_; // local handle
     ros::Subscriber joy_sub; // subscribes to raw joystick message
+    ros::Subscriber gear_sub; // subcribe to gear switch message from arduino
     ros::Publisher throttle_switch_pub; // publishes on/off signal for throttle
     ros::Publisher pedal_fraction_pub; // publishes fraction pedal is pressed
 
     // Parameters
     int deadman_button; // assigns which button to check in order to send motion commands
     double scale_linear; // scales accelerator command by this factor before sending
+    int gear;
 
 public:
     AcceleratorNode() : nh(""), nh_("~")
     {
         // Set up ROS objects
         joy_sub = nh.subscribe<sensor_msgs::Joy>("joy", 1, &AcceleratorNode::joyCallback, this);
+	// gear switch subscriber
+	    gear_sub = nh.subscribe<std_msgs::Int8>("/velocity_node/gear", 1, &AcceleratorNode::gear_Callback, this);
         throttle_switch_pub = nh_.advertise<std_msgs::Bool>("throttle_switch", 1);
         pedal_fraction_pub = nh_.advertise<std_msgs::Float32>("pedal_fraction", 1);
 
@@ -79,6 +84,11 @@ public:
             pedal_fraction_pub.publish(pedal_fraction);
         }
     }
+    void gear_Callback(const std_msgs::Int8::ConstPtr& msg)
+    {
+	gear_switch = msg -> data;
+    }
+
 };
 
 int main(int argc, char** argv)
