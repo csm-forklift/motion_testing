@@ -8,6 +8,7 @@
     <arg name="timeout" default="1.0"/>
     <arg name="port_steering" default="/dev/ttyACM0"/>
     <arg name="port_accelerator_encoder" default="/dev/ttyACM1"/>
+    <arg name="port_clamp" default="/dev/ttyACM2"/>
     <arg name="joy_dev" default="/dev/input/js0"/>
 
     <!--========================-->
@@ -24,6 +25,7 @@
         <param name="autonomous_deadman" value="$(arg autonomous_deadman)"/>
         <param name="timeout" value="$(arg timeout)"/>
         <param name="vel_max" value="0.5"/>
+        <param name="clamp_scale" value="1.0"/>
     </node>
     
     <!--========================-->
@@ -48,7 +50,7 @@
           2) $ roslaunch sensors localization_velocity_imu.launch (reads imu and
                canbus data)
     -->
-    <!-- The arduino running this code can be an UNO or a MEGA and should be running "motion_testing/src/accelerator_encoder_gear_analog.ino", see file for wiring -->
+    <!-- The arduino running this code must be a MEGA and should be running "motion_testing/src/accelerator_encoder_gear_analog.ino", see file for wiring -->
     <node pkg="rosserial_python" type="serial_node.py" name="accelerator_encoder_gear_arduino">
         <param name="port" value="$(arg port_accelerator_encoder)"/>
     </node>
@@ -67,6 +69,14 @@
         <param name="error_tolerance" value="0.05"/>
         <param name="error_exponent1" value="2.0" />
         <param name="error_exponent2" value="1.0" />
+    </node>
+    
+    <!--=====================-->
+    <!-- Clamp Control Nodes -->
+    <!--=====================-->
+    <!-- The arduino running this code must be a MEGA and should be running "grasping/src/clamp_switch/clamp_switch.ino", see file for wiring -->
+    <node pkg="rosserial_python" type="serial_node.py" name="clamp_switch_arduino">
+        <param name="port" value="$(arg port_clamp)"/>
     </node>
     
 </launch>

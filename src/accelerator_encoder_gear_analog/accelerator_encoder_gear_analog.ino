@@ -17,21 +17,23 @@
  * "neutral", and "reverse".
  * 
  * Pin Layout
- * Arduino        Pedal
- * D4->relay in   Relay NO->Switch (green), Relay COM->Switch GND (black)
- * D5             Signal 1 (blue)
- * D6             Signal 2 (red)
- * GND            GND (yellow)
+ * Arduino            Pedal Relay
+ * D4->relay in       Relay NO->Switch (green), Relay COM->Switch GND (black)
+ * GND                GND (yellow)
  * 
- *                DAC
- * A4             SDA
- * A5             SCL
+ *                    DAC
+ * A4(UNO), D20(MEGA) SDA (red)
+ * A5(UNO), D21(MEGA) SCL (blue)
  * 
- *                Encoder
- * D2 (interrupt) Pin A (white)
- * D3             Pin B (Brown)
- * 5V             5V (Orange)
- * GND            GND (Black)
+ *                    Encoder
+ * D2 (interrupt)     Pin A (white) (white on extension)
+ * D3                 Pin B (Brown) (yellow on extension)
+ * 5V                 5V (Orange) (red on extension)
+ * GND                GND (Black) (black on extension)
+ * 
+ *                    Gear Relay
+ * D5                 Relay1 in (yellow)
+ * D6                 Relay2 in (orange)
  */
 
 //===== ROS Includes =====//
@@ -171,8 +173,8 @@ void loop() {
   //===== Gear Sequence =====//
   if (gear == 1)
   {
-    digitalWrite(GEAR_RELAY_1, HIGH);
-    digitalWrite(GEAR_RELAY_2, LOW);
+    digitalWrite(GEAR_RELAY_1, LOW);
+    digitalWrite(GEAR_RELAY_2, HIGH);
   }
   else if (gear == 0)
   {
@@ -181,8 +183,8 @@ void loop() {
   }
   else if (gear == -1)
   {
-    digitalWrite(GEAR_RELAY_1, LOW);
-    digitalWrite(GEAR_RELAY_2, HIGH);
+    digitalWrite(GEAR_RELAY_1, HIGH);
+    digitalWrite(GEAR_RELAY_2, LOW);
   }
 
   nh.spinOnce();

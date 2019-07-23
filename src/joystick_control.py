@@ -90,18 +90,28 @@ class JoystickController:
                 # Calculate the velocity based on joystick input
                 self.velocity = self.vel_scale*self.vel_max
 
+                # If gear is "forward" make sure velocity is positive, if "reverse" it should be negative
+                if (self.gear == 1):
+                    self.velocity = max(0, self.velocity)
+                elif (self.gear == -1):
+                    self.velocity = min(0, self.velocity)
+                else:
+                    self.velocity = 0
+
                 # Calculate the steering angle based on joystick input
                 # (remember, + = right, - = left, when facing forwards)
-                if (self.steering_mode == "relative"):
-                    self.angle += -self.angle_scale*self.angle_velocity*self.delta_t
-                    # Bound the angle
-                    self.angle = min(self.angle, self.angle_max)
-                    self.angle = max(self.angle, -self.angle_max)
-                else:
-                    # Must be negated because the joystick considers left as positive
-                    # but the steering angle as determined by the "backwards" driving
-                    # convention used in our system makes left as negative
-                    self.angle = -self.angle_scale*self.angle_max
+                # NOTE: if gear is in "neutral" do not change the steering angle
+                if (self.gear != 0):
+                    if (self.steering_mode == "relative"):
+                        self.angle += -self.angle_scale*self.angle_velocity*self.delta_t
+                        # Bound the angle
+                        self.angle = min(self.angle, self.angle_max)
+                        self.angle = max(self.angle, -self.angle_max)
+                    else:
+                        # Must be negated because the joystick considers left as positive
+                        # but the steering angle as determined by the "backwards" driving
+                        # convention used in our system makes left as negative
+                        self.angle = -self.angle_scale*self.angle_max
 
                 # Publish the messages
                 self.velocity_msg.data = self.velocity
@@ -135,8 +145,6 @@ class JoystickController:
 
         # Store the velocity scaling value
         self.vel_scale = msg.axes[self.vel_axes]
-        # Bound it to be positive
-        self.vel_scale = max(self.vel_scale, 0)
 
         # Store the angle scaling value
         self.angle_scale = msg.axes[self.angle_axes]

@@ -6,7 +6,7 @@ Implements a simple Discrete-Time PID controller in ROS.
 
 
 import rospy
-from std_msgs.msg import UInt8, Float32, Float64
+from std_msgs.msg import UInt8, Int8, Float32, Float64
 from sensor_msgs.msg import Joy
 import numpy as np
 import Queue
@@ -15,7 +15,7 @@ import time
 class PIDController:
     def __init__(self):
         #===== Set up ROS parameters and objects =====#
-        rospy.init_node("velocity_two_pid_delta")
+        rospy.init_node("velocity_gear_two_pid_delta")
 
         # Set parameters
         self.Kp1 = rospy.get_param("~Kp1", 1) # proportional gain
@@ -49,7 +49,7 @@ class PIDController:
         self.gear = 0 # start in neutral until told otherwise
 
         # DEBUG: print out bounding values
-        print("[velocity_gear_two_pid_delta] Bounding control output to, Min: {0:d}, Max: {1:d}".format(self.output_min, self.output_mas))
+        print("[velocity_gear_two_pid_delta] Bounding control output to, Min: {0:d}, Max: {1:d}".format(self.output_min, self.output_max))
 
         # Set publishers and subscribers
         self.velocity_sub = rospy.Subscriber("velocity_node/velocity", Float64, self.velocity_callback, queue_size=3)
