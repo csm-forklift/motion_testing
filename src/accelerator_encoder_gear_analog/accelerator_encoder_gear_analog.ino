@@ -34,6 +34,53 @@
  *                    Gear Relay
  * D5                 Relay1 in (yellow)
  * D6                 Relay2 in (orange)
+ * 
+ * Gear Switch Schematic
+ * 
+ *        NEUTRAL      
+ *          8(NO)   6(NC)
+ *                 /
+ *                /    Relay2
+ *               /
+ *              4(COM)
+ *              |
+ *              | (connected in forklift)
+ *              |
+ *      3(NO)   5(NC)
+ *             /
+ *            /        Relay1
+ *           /
+ *          7(COM)
+ *          
+ *        FORWARD
+ *          8(NO)   6(NC)
+ *                 /
+ *                /    Relay2
+ *               /
+ *              4(COM)
+ *              |
+ *              | (connected in forklift)
+ *              |
+ *      3(NO)   5(NC)
+ *       \      
+ *        \            Relay1
+ *         \  
+ *          7(COM)
+ *          
+ *        REVERSE
+ *          8(NO)   6(NC)
+ *           \      
+ *            \        Relay2
+ *             \  
+ *              4(COM)
+ *              |
+ *              | (connected in forklift)
+ *              |
+ *      3(NO)   5(NC)
+ *             /
+ *            /        Relay1
+ *           /
+ *          7(COM)
  */
 
 //===== ROS Includes =====//

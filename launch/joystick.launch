@@ -17,11 +17,12 @@
         <param name="autorepeat_rate" value="20" />
     </node>
 
-    <node pkg="motion_testing" type="joystick_control.py" name="joystick_control" output="screen">
+    <node pkg="motion_testing" type="joystick_control.py" name="joystick_control">
         <param name="manual_deadman" value="$(arg manual_deadman)"/>
         <param name="autonomous_deadman" value="$(arg autonomous_deadman)"/>
         <param name="timeout" value="$(arg timeout)"/>
         <param name="vel_max" value="0.5"/>
+        <param name="clamp_scale" value="1.0"/>
     </node>
     
 </launch>

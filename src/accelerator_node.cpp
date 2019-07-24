@@ -86,7 +86,7 @@ public:
     }
     void gear_Callback(const std_msgs::Int8::ConstPtr& msg)
     {
-	gear_switch = msg -> data;
+	    gear = msg -> data;
     }
 
 };
