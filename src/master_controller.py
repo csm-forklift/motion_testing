@@ -169,7 +169,7 @@ class MasterController:
         self.grasp_finished = msg.data
 
     def rollPositionCallback(self, msg):
-        self.target_current_pose.pose.position = copy.deepcopoy(msg.point)
+        self.target_current_pose.pose.position = copy.deepcopy(msg.point)
 
     def distanceFromTarget(self):
         '''
@@ -364,6 +364,8 @@ class MasterController:
 
                 if (self.paths[self.approach_path] is not None):
                     while (self.distanceFromTarget() > self.roll_approach_radius):
+                        # DEBUG:
+                        print("Distance from target: %0.4f, Radius: %0.4f" % (self.distanceFromTarget(), self.roll_approach_radius))
                         self.path_pub.publish(self.paths[self.approach_path])
                         gear = Int8()
                         gear.data = self.gears[self.approach_path]

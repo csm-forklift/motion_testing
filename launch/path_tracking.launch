@@ -1,0 +1,34 @@
+<launch>
+
+    <!--==========================-->
+    <!-- Arguments and Parameters -->
+    <!--==========================-->
+    <arg name="debug" default="false"/>
+    
+    <!--=============================-->
+    <!-- Mapping and Path Generation -->
+    <!--=============================-->
+    <!-- Map Generation -->
+    <node pkg="tf" type="static_transform_publisher" name="map_broadcaster"
+        args="0 0 0 0 0 0 1 world map 50" />
+    <include file="$(find mapping)/launch/forklift_obstacle_map_test.launch" />
+    
+    <!-- Obstacle Avoidance Path -->
+    <node pkg="robust_navigation" type="planner_node" name="planner_node" respawn="true">
+        <remap from="/path" to="/obstacle_avoidance_path"/>
+        <remap from="/map" to="/obstacle_map"/>
+    </node>
+    
+    <!-- Maneuver Path -->
+    <node pkg="grasping" type="maneuver_path.py" name="maneuver_path" output="screen">
+        <remap from="/map" to="/obstacle_map"/>
+        <remap from="/maneuver_path/path1" to="/maneuver_path1"/>
+        <remap from="/maneuver_path/path2" to="/maneuver_path2"/>
+    </node>
+    
+    <!-- Approach Path -->
+    <node pkg="grasping" type="approach_path" name="approach_path">
+        <remap from="/approach_path/path" to="/approach_path"/>
+    </node>
+    
+</launch>
