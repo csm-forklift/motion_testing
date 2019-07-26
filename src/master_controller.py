@@ -17,6 +17,7 @@ from grasping.srv import OptimizeManeuver, OptimizeManeuverRequest, OptimizeMane
 from motion_testing.srv import SetTarget, SetTargetRequest, SetTargetResponse
 from motion_testing.msg import PathWithGear
 from nav_msgs.msg import Path, Odometry
+from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool, Int8, Float32
 import math
 import time
@@ -36,13 +37,22 @@ class MasterController:
         self.roll_approach_radius = rospy.get_param("~roll_approach_radius", 3*self.base_to_clamp)
         self.scale_grasp = rospy.get_param("~scale_grasp", 0.5) # speed signal for clamp open/close
         self.scale_movement = rospy.get_param("~scale_movement", 0.5) # speed signal for clamp raise/lower
+
+        # Control deadman parameters
+        self.manual_deadman_button = rospy.get_param("~manual_deadman", 4)
+        self.manual_deadman_on = False # this must be switched to 'True' to publish a non-zero command signal
+        self.autonomous_deadman_button = rospy.get_param("~autonomous_deadman", 5)
+        self.autonomous_deadman_on = False
+        self.timeout = rospy.get_param("~timeout", 1) # number of seconds allowed since the last setpoint message before sending a 0 command
+        self.timeout_start = time.time()
+
         # Used to test only a small portion of the code. This allows for
         # splitting up the various path tracking operations and only do the
         # desired ones at a time.
         self.debug_test = rospy.get_param("~debug_test", "none")
         # These are the currently available tests that have been implemented.
         # Add new ones to the list as the need arises.
-        self.available_debug_tests = {"none": DebugTest(starting_mode=1, allowed_modes=[1,2,3,4,5,6,7]), "grasp": DebugTest(starting_mode=5, allowed_modes=[5,6,7])}
+        self.available_debug_tests = {"none": DebugTest(starting_mode=1, allowed_modes=[1,2,3,4,5,6,7]), "grasp": DebugTest(starting_mode=5, allowed_modes=[5,6,7]), "obstacle_avoidance": DebugTest(starting_mode=2, allowed_modes=[2])}
 
         # Path indices
         self.obstacle_path = 0
@@ -72,10 +82,19 @@ class MasterController:
         # FIXME: making True for testing purposes only, return to False when putting on the system
         self.switch_status_down = True
         self.switch_status_open = True
+        self.obstacle_path_received = False
+        self.maneuver_path1_received = False
+        self.maneuver_path2_received = False
+        self.approach_path_received = False
 
         # Make sure all controllers start OFF
         self.control_mode = Int8()
         self.control_mode.data = 0 # determines which controllers can be operating (see top of file for notes)
+
+        # Messages for publishing
+        self.gear_msg = Int8()
+        self.clamp_movement_msg = Float32()
+        self.clamp_grasp_msg = Float32()
 
         # Publishing rate
         self.rate = rospy.Rate(30)
@@ -99,6 +118,7 @@ class MasterController:
         self.grasp_success_sub = rospy.Subscriber("/clamp_control/grasp_success", Bool, self.graspSuccessCallback, queue_size=3)
         self.grasp_finished_sub = rospy.Subscriber("/clamp_control/grasp_finished", Bool, self.graspFinishedCallback, queue_size=3)
         self.roll_position_sub = rospy.Subscriber("/cylinder_detection/point", PointStamped, self.rollPositionCallback, queue_size=3)
+        self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystickCallback, queue_size=3)
 
         #=====#
         # Wait for optimization maneuver service because it is require
@@ -128,25 +148,29 @@ class MasterController:
     def spin(self):
         while not rospy.is_shutdown():
             if (self.operation_mode not in self.available_debug_tests[self.debug_test].allowed_modes):
-                # # Restart operation
-                # self.operation_mode = self.available_debug_tests[self.debug_test].starting_mode
+                # Restart operation
+                self.operation_mode = self.available_debug_tests[self.debug_test].starting_mode
 
-                # Stop operation
-                self.operation_mode = 0
+                # # Stop operation
+                # self.operation_mode = 0
             self.rate.sleep()
 
     def obstacleAvoidanceCallback(self, msg):
+        self.obstacle_path_received = True
         self.paths[self.obstacle_path] = copy.deepcopy(msg)
 
     def maneuverPath1Callback(self, msg):
+        self.maneuver_path1_received = True
         self.paths[self.maneuver_path1] = copy.deepcopy(msg.path)
         self.gears[self.maneuver_path1] = msg.gear
 
     def maneuverPath2Callback(self, msg):
+        self.maneuver_path2_received = True
         self.paths[self.maneuver_path2] = copy.deepcopy(msg.path)
         self.gears[self.maneuver_path2] = msg.gear
 
     def approachPathCallback(self, msg):
+        self.approach_path_received = True
         self.paths[self.approach_path] = copy.deepcopy(msg)
 
     def optimizationCallback(self, msg):
@@ -170,6 +194,21 @@ class MasterController:
 
     def rollPositionCallback(self, msg):
         self.target_current_pose.pose.position = copy.deepcopy(msg.point)
+
+    def joystickCallback(self, msg):
+        # Update timeout time
+        self.timeout_start = time.time()
+
+        # One of these buttons must be on for this node to send a driving command
+        if (msg.buttons[self.manual_deadman_button]):
+            self.manual_deadman_on = True
+        else:
+            self.manual_deadman_on = False
+
+        if (msg.buttons[self.autonomous_deadman_button]):
+            self.autonomous_deadman_on = True
+        else:
+            self.autonomous_deadman_on = False
 
     def distanceFromTarget(self):
         '''
@@ -202,6 +241,26 @@ class MasterController:
 
         message = "Grasp sequence finished. Waiting for drop target."
 
+        #======================================================================#
+        # Handle Debug Conditions Here
+        #======================================================================#
+        if (self.debug_test == "obstacle_avoidance"):
+            rospy.set_param("/control_panel_node/goal_x", self.target_current_pose.pose.position.x)
+            rospy.set_param("/control_panel_node/goal_y", self.target_current_pose.pose.position.y)
+
+            # Wait for the path to update
+            while not self.obstacle_path_received:
+                # DEBUG: Check for obstacle path
+                print("Mesaa waitin'")
+                
+                dur = rospy.Duration(1.0)
+                rospy.sleep(dur)
+
+            rospy.loginfo("Obstacle path received. Beginning path tracking test.")
+
+        #======================================================================#
+        # Main Control Loop
+        #======================================================================#
         while (self.grasp_finished is not True):
             # Run optimization to obtain paths from current position to the maneuver to the roll
             if (self.operation_mode == 1):
@@ -217,13 +276,10 @@ class MasterController:
                     rospy.wait_for_message("/obstacle_avoidance_path", Path)
                     # Publish path and gear and delay
                     self.path_pub.publish(self.paths[self.obstacle_path])
-                    gear = Int8()
-                    gear.data = self.gears[self.obstacle_path]
-                    self.gear_pub.publish(gear)
+                    self.publishGear(self.gears[self.obstacle_path])
                     time.sleep(1)
 
                     self.operation_mode = 2
-
 
             # Avoid obstacles on the way to the maneuver path
             if (self.operation_mode == 2):
@@ -237,16 +293,12 @@ class MasterController:
 
                     while not rospy.get_param("/goal_bool", False):
                         self.path_pub.publish(self.paths[self.obstacle_path])
-                        gear = Int8()
-                        gear.data = self.gears[self.obstacle_path]
-                        self.gear_pub.publish(gear)
+                        self.publishGear(self.gears[self.obstacle_path])
                         self.rate.sleep()
 
                     # Publish next path and delay
                     self.path_pub.publish(self.paths[self.maneuver_path1])
-                    gear = Int8()
-                    gear.data = self.gears[self.maneuver_path1]
-                    self.gear_pub.publish(gear)
+                    self.publishGear(self.gears[self.maneuver_path1])
                     time.sleep(1)
 
                     self.operation_mode = 3
@@ -270,16 +322,12 @@ class MasterController:
 
                     while not rospy.get_param("/goal_bool", False):
                         self.path_pub.publish(self.paths[self.maneuver_path1])
-                        gear = Int8()
-                        gear.data = self.gears[self.maneuver_path1]
-                        self.gear_pub.publish(gear)
+                        self.publishGear(self.gears[self.maneuver_path1])
                         self.rate.sleep()
 
                     # Publish next path and delay
                     self.path_pub.publish(self.paths[self.maneuver_path2])
-                    gear = Int8()
-                    gear.data = self.gears[self.maneuver_path2]
-                    self.gear_pub.publish(gear)
+                    self.publishGear(self.gears[self.maneuver_path2])
                     self.rate.sleep()
 
                     self.operation_mode = 4
@@ -303,9 +351,7 @@ class MasterController:
 
                     while not rospy.get_param("/goal_bool", False):
                         self.path_pub.publish(self.paths[self.maneuver_path2])
-                        gear = Int8()
-                        gear.data = self.gears[self.maneuver_path2]
-                        self.gear_pub.publish(gear)
+                        self.publishGear(self.gears[self.maneuver_path2])
                         self.rate.sleep()
 
                     self.operation_mode = 5
@@ -326,15 +372,11 @@ class MasterController:
 
                 # Open the clamp
                 while (self.switch_status_open == False):
-                    clamp_grasp = Float32()
-                    clamp_grasp.data = self.scale_grasp # positive is open
-                    self.clamp_grasp_pub.publish(clamp_grasp)
+                    self.publishClampGrasp(self.scale_grasp) # positive is open
 
                 # Lower the clamp
                 while (self.switch_status_down == False):
-                    clamp_movement = Float32()
-                    clamp_movement = self.scale_movement # positive is down
-                    self.clamp_movement_pub.publish(clamp_movement)
+                    self.publishClampMovement(self.scale_movement) # positive is down
                     self.rate.sleep()
 
                 # Check if the roll pose has changed from the target specified by the service request. If so, publish the new roll and forklift poses to generate a new approach path
@@ -347,9 +389,7 @@ class MasterController:
 
                 # Publish next path and delay
                 self.path_pub.publish(self.paths[self.approach_path])
-                gear = Int8()
-                gear.data = self.gears[self.approach_path]
-                self.gear_pub.publish(gear)
+                self.publishGear(self.gears[self.approach_path])
 
                 self.operation_mode = 6
 
@@ -367,9 +407,7 @@ class MasterController:
                         # DEBUG:
                         print("Distance from target: %0.4f, Radius: %0.4f" % (self.distanceFromTarget(), self.roll_approach_radius))
                         self.path_pub.publish(self.paths[self.approach_path])
-                        gear = Int8()
-                        gear.data = self.gears[self.approach_path]
-                        self.gear_pub.publish(gear)
+                        self.publishGear(self.gears[self.approach_path])
                         self.rate.sleep()
 
                     self.operation_mode = 7
@@ -405,6 +443,48 @@ class MasterController:
         resp.success = False
         resp.message = "This feature has not been implemented yet."
         return resp
+
+    def publishGear(self, gear):
+        # Publish the gear value considering deadman buttons
+        if (self.manual_deadman_on and ((time.time() - self.timeout_start) < self.timeout)):
+            # Send no command
+            pass
+        elif (self.autonomous_deadman_on and ((time.time() - self.timeout_start) < self.timeout)):
+            # Send desired gear
+            self.gear_msg.data = gear
+            self.gear_pub.publish(self.gear_msg)
+        else:
+            # Deadman not pressed or joystick timed out
+            self.gear_msg.data = 0
+            self.gear_pub.publish(self.gear_msg)
+
+    def publishClampMovement(self, movement):
+        # Publish the clamp raise/lower command considering deadman buttons
+        if (self.manual_deadman_on and ((time.time() - self.timeout_start) < self.timeout)):
+            # Send no command
+            pass
+        elif (self.autonomous_deadman_on and ((time.time() - self.timeout_start) < self.timeout)):
+            # Send desired gear
+            self.clamp_movement_msg.data = movement
+            self.clamp_movement_pub.publish(self.clamp_movement_msg)
+        else:
+            # Deadman not pressed or joystick timed out
+            self.clamp_movement_msg.data = 0
+            self.clamp_movement_pub.publish(self.clamp_movement_msg)
+
+    def publishClampGrasp(self, grasp):
+        # Publish the clamp open/close command considering deadman buttons
+        if (self.manual_deadman_on and ((time.time() - self.timeout_start) < self.timeout)):
+            # Send no command
+            pass
+        elif (self.autonomous_deadman_on and ((time.time() - self.timeout_start) < self.timeout)):
+            # Send desired gear
+            self.clamp_grasp_msg.data = grasp
+            self.clamp_grasp_pub.publish(self.clamp_grasp_msg)
+        else:
+            # Deadman not pressed or joystick timed out
+            self.clamp_grasp_msg.data = 0
+            self.clamp_grasp_pub.publish(self.clamp_grasp_msg)
 
 if __name__ == "__main__":
     try:

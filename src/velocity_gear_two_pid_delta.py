@@ -137,6 +137,7 @@ class PIDController:
 
                 #===== Constraints =====#
                 #*** Apply constraints to the output here such as u >= 0 or apply a conversion like u = scale_factor * u. ***#
+                # The output here is PWM going to the Arduino (range 0-255)
                 self.u_delta = min(self.u_delta, self.delta_max)
                 self.u_delta = max(self.u_delta, self.delta_min)
                 self.u += self.u_delta

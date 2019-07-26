@@ -17,7 +17,7 @@
         <param name="autorepeat_rate" value="20" />
     </node>
 
-    <node pkg="motion_testing" type="joystick_control.py" name="joystick_control">
+    <node pkg="motion_testing" type="joystick_control.py" name="joystick_control" output="screen">
         <param name="manual_deadman" value="$(arg manual_deadman)"/>
         <param name="autonomous_deadman" value="$(arg autonomous_deadman)"/>
         <param name="timeout" value="$(arg timeout)"/>

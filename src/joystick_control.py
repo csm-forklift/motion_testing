@@ -52,6 +52,7 @@ class JoystickController:
 
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size=1)
         self.gear_sub = rospy.Subscriber("/velocity_node/gear", Int8, self.gear_callback, queue_size=1) # read the most recent gear sent my the controllers
+        self.angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float64, self.angle_callback, queue_size=1) # get the current steering angle to use as the setpoint when the deadmans are not pressed
 
         if self.steering_mode not in ["relative", "absolute"]:
             rospy.loginfo("steering_mode value: '%s', is not a valid option. Must be either 'relative' or 'absolute'. Setting to 'relative'." % self.steering_mode)
@@ -74,6 +75,7 @@ class JoystickController:
         self.angle_scale = 0
         self.angle = 0
         self.angle_msg = Float64()
+        self.angle_current = 0
         self.open_command = 0
         self.open_msg = Float32()
         self.raise_command = 0 # remember that a negative value = upwards
@@ -116,6 +118,10 @@ class JoystickController:
                 # Publish the messages
                 self.velocity_msg.data = self.velocity
                 self.angle_msg.data = self.angle
+
+                # DEBUG:
+                print("[joystick] publishing velocity setpoint")
+
                 self.vel_setpoint_pub.publish(self.velocity_msg)
                 self.angle_setpoint_pub.publish(self.angle_msg)
                 self.open_msg.data = self.clamp_scale*self.open_command
@@ -133,7 +139,7 @@ class JoystickController:
 
                 # Publish the messages
                 self.velocity_msg.data = self.velocity
-                self.angle_msg.data = self.angle
+                self.angle_msg.data = self.angle_current
                 self.vel_setpoint_pub.publish(self.velocity_msg)
                 self.angle_setpoint_pub.publish(self.angle_msg)
 
@@ -185,6 +191,10 @@ class JoystickController:
     def gear_callback(self, msg):
         # Update gear
         self.gear = msg.data
+
+    def angle_callback(self, msg):
+        # Get current steering angle to use as setpoint when deadman is not pressed
+        self.angle_current = msg.data
 
 if __name__ == "__main__":
     try:

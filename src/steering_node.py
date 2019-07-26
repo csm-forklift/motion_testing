@@ -5,7 +5,7 @@ import traceback
 import time
 import math
 import rospy
-from std_msgs.msg import Float64, Bool
+from std_msgs.msg import Float64, Bool, Int8
 from sensor_msgs.msg import Joy
 from Phidget22.Devices.Stepper import *
 from Phidget22.PhidgetException import *
@@ -74,6 +74,7 @@ class SteeringController():
         self.max_vel_scale = 0.17
 
         self.velocity_current = 0 # current velocity from the motor controller
+        self.gear = 0 # current gear of the forklift, should only steer if not in neutral (gear = 0)
 
         #===============================================================#
         # These parameters are used in the stall detection and handling
@@ -120,6 +121,7 @@ class SteeringController():
         self.velocity_pub = rospy.Publisher("~motor/velocity", Float64, queue_size = 10)
         self.moving_sub = rospy.Subscriber("/steering_node/motor/is_moving", Bool, self.moving_callback, queue_size = 3)
         self.angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float64, self.angle_callback, queue_size = 3)
+        self.gear_sub = rospy.Subscriber("/velocity_node/gear", Int8, self.gear_callback, queue_size = 3)
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size = 1)
         # Run 'spin' loop at 30Hz
         self.rate = rospy.Rate(30)
@@ -269,7 +271,7 @@ class SteeringController():
     #===================================#
     def control_loop(self):
         # Check if deadman switch is pressed
-        if ((self.manual_deadman_on or self.autonomous_deadman_on) and (time.time() - self.timeout_start) < self.timeout):
+        if ((self.manual_deadman_on or self.autonomous_deadman_on) and (time.time() - self.timeout_start) < self.timeout and (self.gear != 0)):
             # Determine direction
             error = self.angle_setpoint - self.angle
 
@@ -354,6 +356,10 @@ class SteeringController():
     def moving_callback(self, msg):
         # Update 'moving' to indicate whether the motor is moving or not
         self.moving = msg.data
+
+    def gear_callback(self, msg):
+        # Update gear
+        self.gear = msg.data
 
     def check_stall(self):
         stalled = False

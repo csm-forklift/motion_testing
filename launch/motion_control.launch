@@ -9,6 +9,10 @@
     <arg name="port_steering" default="/dev/ttyACM0"/>
     <arg name="port_accelerator_encoder" default="/dev/ttyACM1" />
     <arg name="port_clamp" default="/dev/ttyACM2"/>
+    <arg name="output_max" default="255"/>
+    <arg name="output_min" default="0"/>
+    <arg name="max_angle" default="1.309"/> <!-- 75deg -->
+    <arg name="min_angle" default="-1.309"/> <!-- -75deg -->
 
     <!--========================-->
     <!-- Steering Control Nodes -->
@@ -20,6 +24,8 @@
         <param name="manual_deadman" value="$(arg manual_deadman)" />
         <param name="autonomous_deadman" value="$(arg autonomous_deadman)" />
         <param name="timeout" value="$(arg timeout)" />
+        <param name="/forklift/steering/max_angle" value="$(arg max_angle)"/>
+        <param name="/forklift/steering/min_angle" value="$(arg min_angle)"/>
     </node>
     
     <!--========================-->
@@ -49,8 +55,10 @@
         <param name="delta_max" value="100"/>
         <param name="delta_min" value="-100"/>
         <param name="error_tolerance" value="0.05"/>
-        <param name="error_exponent1" value="2.0" />
+        <param name="error_exponent1" value="1.0" />
         <param name="error_exponent2" value="1.0" />
+        <param name="output_max" value="$(arg output_max)"/>
+        <param name="output_min" value="$(arg output_min)"/>
     </node>
 
 </launch>
