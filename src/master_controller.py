@@ -7,7 +7,8 @@ List of Control Modes
 0: no controllers running
 1: forward path tracking (velocity_controller_forward)
 2: reverse path tracking (velocity_controller_reverse)
-3: approach control + clamp control (approach_control, clamp_control)
+3: approach control + clamp control + cylinder deteciont (approach_control, clamp_control, cylinder_detection)
+4: cylinder detection only (cylinder_detection)
 '''
 
 
@@ -52,7 +53,10 @@ class MasterController:
         self.debug_test = rospy.get_param("~debug_test", "none")
         # These are the currently available tests that have been implemented.
         # Add new ones to the list as the need arises.
-        self.available_debug_tests = {"none": DebugTest(starting_mode=1, allowed_modes=[1,2,3,4,5,6,7]), "grasp": DebugTest(starting_mode=5, allowed_modes=[5,6,7]), "obstacle_avoidance": DebugTest(starting_mode=2, allowed_modes=[2])}
+        self.available_debug_tests = {"none": DebugTest(starting_mode=1, allowed_modes=[1,2,3,4,5,6,7]), \
+        "grasp": DebugTest(starting_mode=5, allowed_modes=[5,6,7]), \
+        "obstacle_avoidance": DebugTest(starting_mode=2, allowed_modes=[2]), \
+        "maneuver": DebugTest(starting_mode=1, allowed_modes=[1,2,3,4])}
 
         # Path indices
         self.obstacle_path = 0
@@ -80,8 +84,8 @@ class MasterController:
         self.target_current_pose = PoseStamped()
 
         # FIXME: making True for testing purposes only, return to False when putting on the system
-        self.switch_status_down = True
-        self.switch_status_open = True
+        self.switch_status_down = False
+        self.switch_status_open = False
         self.obstacle_path_received = False
         self.maneuver_path1_received = False
         self.maneuver_path2_received = False
@@ -252,7 +256,7 @@ class MasterController:
             while not self.obstacle_path_received:
                 # DEBUG: Check for obstacle path
                 print("Mesaa waitin'")
-                
+
                 dur = rospy.Duration(1.0)
                 rospy.sleep(dur)
 

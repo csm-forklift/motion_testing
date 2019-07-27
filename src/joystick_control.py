@@ -119,8 +119,8 @@ class JoystickController:
                 self.velocity_msg.data = self.velocity
                 self.angle_msg.data = self.angle
 
-                # DEBUG:
-                print("[joystick] publishing velocity setpoint")
+                # # DEBUG:
+                # print("[joystick] publishing velocity setpoint")
 
                 self.vel_setpoint_pub.publish(self.velocity_msg)
                 self.angle_setpoint_pub.publish(self.angle_msg)
