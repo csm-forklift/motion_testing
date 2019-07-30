@@ -35,7 +35,7 @@ class MasterController:
         # Read in ROS parameters
         rospy.init_node("master_controller")
         self.base_to_clamp = rospy.get_param("/forklift/body/base_to_clamp", 1.4658)
-        self.roll_approach_radius = rospy.get_param("~roll_approach_radius", 3*self.base_to_clamp)
+        self.roll_approach_radius = rospy.get_param("~roll_approach_radius", 2*self.base_to_clamp)
         self.scale_grasp = rospy.get_param("~scale_grasp", 0.5) # speed signal for clamp open/close
         self.scale_movement = rospy.get_param("~scale_movement", 0.5) # speed signal for clamp raise/lower
 
@@ -113,8 +113,8 @@ class MasterController:
         self.forklift_approach_pub = rospy.Publisher("/forklift/approach_pose", PoseStamped, queue_size=3)
 
         self.obstacle_avoidance_sub = rospy.Subscriber("/obstacle_avoidance_path", Path, self.obstacleAvoidanceCallback, queue_size=1)
-        self.maneuver_path1_sub = rospy.Subscriber("/maneuver_path1", PathWithGear, self.maneuverPath1Callback, queue_size=1)
-        self.maneuver_path2_sub = rospy.Subscriber("/maneuver_path2", PathWithGear, self.maneuverPath2Callback, queue_size=1)
+        self.maneuver_path1_sub = rospy.Subscriber("/maneuver_path1_gear", PathWithGear, self.maneuverPath1Callback, queue_size=1)
+        self.maneuver_path2_sub = rospy.Subscriber("/maneuver_path2_gear", PathWithGear, self.maneuverPath2Callback, queue_size=1)
         self.approach_path_sub = rospy.Subscriber("/approach_path", Path, self.approachPathCallback, queue_size=1)
         self.switch_status_down_sub = rospy.Subscriber("/switch_status_down", Bool, self.switchDownCallback, queue_size=1)
         self.switch_status_open_sub = rospy.Subscriber("/switch_status_open", Bool, self.switchOpenCallback, queue_size=1)
@@ -274,7 +274,7 @@ class MasterController:
                 resp = self.optimizeManeuver(True)
 
                 # DEBUG:
-                rospy.loginfo("Optimization result: %d", resp.optimization_successful)
+                rospy.loginfo("Optimization result: %d\nMessage: %s", resp.optimization_successful, resp.message)
 
                 if (resp.optimization_successful):
                     rospy.wait_for_message("/obstacle_avoidance_path", Path)
