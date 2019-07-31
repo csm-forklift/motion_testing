@@ -76,7 +76,7 @@ class MasterController:
         else:
             self.debug_test = "none"
             self.operation_mode = 1 # start in the first mode, wait for service call
-        print("Starting mode set to: %d" % self.operation_mode)
+        print("[master_controller]: Starting mode set to: %d" % self.operation_mode)
 
         self.grasp_finished = False # inidcates when grasp operation is fully complete
         self.grasp_success = False # indicates whether the roll has been grasped by the clamp
@@ -107,8 +107,8 @@ class MasterController:
         self.path_pub = rospy.Publisher("/path", Path, queue_size=1)
         self.gear_pub = rospy.Publisher("/velocity_node/gear", Int8, queue_size=3)
         self.control_mode_pub = rospy.Publisher("/control_mode", Int8, queue_size=3, latch=True)
-        self.clamp_movement_pub = rospy.Publisher("/clamp_switch_node/clamp_movement", Float32, queue_size=3)
-        self.clamp_grasp_pub = rospy.Publisher("/clamp_switch_node/clamp_grasp", Float32, queue_size=3)
+        self.clamp_movement_pub = rospy.Publisher("/clamp_switch_node/clamp_movement", Float32, queue_size=1)
+        self.clamp_grasp_pub = rospy.Publisher("/clamp_switch_node/clamp_grasp", Float32, queue_size=1)
         self.roll_pose_pub = rospy.Publisher("/roll/pose", PoseStamped, queue_size=3, latch=True)
         self.forklift_approach_pub = rospy.Publisher("/forklift/approach_pose", PoseStamped, queue_size=3)
 
@@ -190,6 +190,27 @@ class MasterController:
         self.forklift_current_pose.header = copy.deepcopy(msg.header)
         self.forklift_current_pose.pose = copy.deepcopy(msg.pose.pose)
 
+    def acquireRobotPose(self):
+        listener = tf.TransformListener()
+        try:
+            listener.waitForTransform('/odom', '/base_link', rospy.Time(0), rospy.Duration(1))
+            (trans, rot) = listener.lookupTransform('/odom', '/base_link', rospy.Time(0))
+
+            self.forklift_current_pose.header.stamp = rospy.Time(0)
+            self.forklift_current_pose.header.frame_id = 'odom'
+            self.forklift_current_pose.pose.position.x = trans[0]
+            self.forklift_current_pose.pose.position.y = trans[1]
+            self.forklift_current_pose.pose.position.z = trans[2]
+            self.forklift_current_pose.pose.orientation.x = rot[0]
+            self.forklift_current_pose.pose.orientation.y = rot[1]
+            self.forklift_current_pose.pose.orientation.z = rot[2]
+            self.forklift_current_pose.pose.orientation.w = rot[3]
+            return True
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            print("[%s]: Error looking up transform from 'odom' to 'base_link'" % rospy.get_name())
+            return False
+
+
     def graspSuccessCallback(self, msg):
         self.grasp_success = msg.data
 
@@ -262,6 +283,10 @@ class MasterController:
 
             rospy.loginfo("Obstacle path received. Beginning path tracking test.")
 
+        if (self.debug_test == "grasp"):
+            # Send the forklift's current pose to generate an approach path
+            rospy.
+
         #======================================================================#
         # Main Control Loop
         #======================================================================#
@@ -332,7 +357,7 @@ class MasterController:
                     # Publish next path and delay
                     self.path_pub.publish(self.paths[self.maneuver_path2])
                     self.publishGear(self.gears[self.maneuver_path2])
-                    self.rate.sleep()
+                    time.sleep(1)
 
                     self.operation_mode = 4
                 else:
@@ -377,17 +402,23 @@ class MasterController:
                 # Open the clamp
                 while (self.switch_status_open == False):
                     self.publishClampGrasp(self.scale_grasp) # positive is open
+                    self.rate.sleep()
+                # Send the stop command
+                self.publishClampGrasp(0)
 
                 # Lower the clamp
                 while (self.switch_status_down == False):
                     self.publishClampMovement(self.scale_movement) # positive is down
                     self.rate.sleep()
+                # Send the stop command
+                self.publishClampMovement(0)
 
                 # Check if the roll pose has changed from the target specified by the service request. If so, publish the new roll and forklift poses to generate a new approach path
                 if ((self.target_current_pose.pose.position.x != req.roll_pose.pose.position.x) or (self.target_current_pose.pose.position.y != req.roll_pose.pose.position.y)):
                     self.roll_pose_pub.publish(self.target_current_pose)
 
                 # Update approach path using forklift's current position
+                self.acquireRobotPose() # use this function only if no odometry message is being published
                 self.forklift_approach_pub.publish(self.forklift_current_pose)
                 time.sleep(1)
 
