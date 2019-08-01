@@ -154,7 +154,7 @@ class PIDController:
                 self.u_delta = min(self.u_delta, self.delta_max)
                 self.u_delta = max(self.u_delta, self.delta_min)
                 # Scale the delta based on the steering angle (a higher steering angle should have a higher delta because the full range of the pedal has been reduced)
-                self.u_delta *= 1/(np.cos(self.steering_angle)**3)
+                self.u_delta *= 1/(np.sign(np.cos(self.steering_angle))*np.abs(np.cos(self.steering_angle)**2))
                 self.u += self.u_delta
                 self.u = min(self.u, self.output_max)
                 self.u = max(self.u, self.output_min)

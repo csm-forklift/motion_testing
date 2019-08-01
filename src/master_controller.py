@@ -20,6 +20,7 @@ from motion_testing.msg import PathWithGear
 from nav_msgs.msg import Path, Odometry
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool, Int8, Float32
+import tf
 import math
 import time
 import copy
@@ -283,9 +284,6 @@ class MasterController:
 
             rospy.loginfo("Obstacle path received. Beginning path tracking test.")
 
-        if (self.debug_test == "grasp"):
-            # Send the forklift's current pose to generate an approach path
-            rospy.
 
         #======================================================================#
         # Main Control Loop

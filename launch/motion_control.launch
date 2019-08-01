@@ -24,8 +24,6 @@
         <param name="manual_deadman" value="$(arg manual_deadman)" />
         <param name="autonomous_deadman" value="$(arg autonomous_deadman)" />
         <param name="timeout" value="$(arg timeout)" />
-        <param name="/forklift/steering/max_angle" value="$(arg max_angle)"/>
-        <param name="/forklift/steering/min_angle" value="$(arg min_angle)"/>
     </node>
     
     <!--========================-->
