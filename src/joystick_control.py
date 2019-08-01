@@ -42,18 +42,6 @@ class JoystickController:
         self.neutral_button = rospy.get_param("~neutral_button", 2) # "X" button
         self.reverse_button = rospy.get_param("~reverse_button", 0) # "A" button
 
-        #===== Publishers and Subscribers =====#
-        self.vel_setpoint_pub = rospy.Publisher("/velocity_node/velocity_setpoint", Float64, queue_size=3)
-        self.angle_setpoint_pub = rospy.Publisher("/steering_node/angle_setpoint", Float64, queue_size=3)
-        self.pedal_switch_pub = rospy.Publisher("/velocity_node/pedal_switch", Bool, queue_size=3)
-        self.clamp_movement_pub = rospy.Publisher("/clamp_switch_node/clamp_movement", Float32, queue_size=3)
-        self.clamp_grasp_pub = rospy.Publisher("/clamp_switch_node/clamp_grasp", Float32, queue_size=3)
-        self.gear_pub = rospy.Publisher("/velocity_node/gear", Int8, queue_size=3)
-
-        self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size=1)
-        self.gear_sub = rospy.Subscriber("/velocity_node/gear", Int8, self.gear_callback, queue_size=1) # read the most recent gear sent my the controllers
-        self.angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float64, self.angle_callback, queue_size=1) # get the current steering angle to use as the setpoint when the deadmans are not pressed
-
         if self.steering_mode not in ["relative", "absolute"]:
             rospy.loginfo("steering_mode value: '%s', is not a valid option. Must be either 'relative' or 'absolute'. Setting to 'relative'." % self.steering_mode)
             self.steering_mode = "relative"
@@ -85,6 +73,18 @@ class JoystickController:
 
         self.delta_t = (1/30.)
         self.rate = rospy.Rate(1/self.delta_t)
+        
+         #===== Publishers and Subscribers =====#
+        self.vel_setpoint_pub = rospy.Publisher("/velocity_node/velocity_setpoint", Float64, queue_size=3)
+        self.angle_setpoint_pub = rospy.Publisher("/steering_node/angle_setpoint", Float64, queue_size=3)
+        self.pedal_switch_pub = rospy.Publisher("/velocity_node/pedal_switch", Bool, queue_size=3)
+        self.clamp_movement_pub = rospy.Publisher("/clamp_switch_node/clamp_movement", Float32, queue_size=3)
+        self.clamp_grasp_pub = rospy.Publisher("/clamp_switch_node/clamp_grasp", Float32, queue_size=3)
+        self.gear_pub = rospy.Publisher("/velocity_node/gear", Int8, queue_size=3)
+
+        self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size=1)
+        self.gear_sub = rospy.Subscriber("/velocity_node/gear", Int8, self.gear_callback, queue_size=1) # read the most recent gear sent my the controllers
+        self.angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float64, self.angle_callback, queue_size=1) # get the current steering angle to use as the setpoint when the deadmans are not pressed
 
     def spin(self):
         while not rospy.is_shutdown():
