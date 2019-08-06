@@ -54,10 +54,11 @@ class MasterController:
         self.debug_test = rospy.get_param("~debug_test", "none")
         # These are the currently available tests that have been implemented.
         # Add new ones to the list as the need arises.
-        self.available_debug_tests = {"none": DebugTest(starting_mode=1, allowed_modes=[1,2,3,4,5,6,7]), \
-        "grasp": DebugTest(starting_mode=5, allowed_modes=[5,6,7]), \
+        self.available_debug_tests = {"none": DebugTest(starting_mode=1, allowed_modes=[0,1,2,3,4,5,6,7]), \
+        "grasp": DebugTest(starting_mode=5, allowed_modes=[5,6,7,0]), \
         "obstacle_avoidance": DebugTest(starting_mode=2, allowed_modes=[2]), \
-        "maneuver": DebugTest(starting_mode=1, allowed_modes=[1,2,3,4])}
+        "maneuver": DebugTest(starting_mode=1, allowed_modes=[1,2,3,4]), \
+        "clamp": DebugTest(starting_mode=7, allowed_modes=[7,0])}
 
         # Path indices
         self.obstacle_path = 0
@@ -80,7 +81,7 @@ class MasterController:
         print("[master_controller]: Starting mode set to: %d" % self.operation_mode)
 
         self.grasp_finished = False # inidcates when grasp operation is fully complete
-        self.grasp_success = False # indicates whether the roll has been grasped by the clamp
+        self.grasp_status = False # indicates whether the roll has been grasped by the clamp
         self.forklift_current_pose = PoseStamped()
         self.target_current_pose = PoseStamped()
 
@@ -120,7 +121,7 @@ class MasterController:
         self.switch_status_down_sub = rospy.Subscriber("/switch_status_down", Bool, self.switchDownCallback, queue_size=1)
         self.switch_status_open_sub = rospy.Subscriber("/switch_status_open", Bool, self.switchOpenCallback, queue_size=1)
         self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odomCallback, queue_size=3)
-        self.grasp_success_sub = rospy.Subscriber("/clamp_control/grasp_success", Bool, self.graspSuccessCallback, queue_size=3)
+        self.grasp_status_sub = rospy.Subscriber("/clamp_control/grasp_status", Bool, self.graspSuccessCallback, queue_size=3)
         self.grasp_finished_sub = rospy.Subscriber("/clamp_control/grasp_finished", Bool, self.graspFinishedCallback, queue_size=3)
         self.roll_position_sub = rospy.Subscriber("/cylinder_detection/point", PointStamped, self.rollPositionCallback, queue_size=3)
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystickCallback, queue_size=3)
@@ -213,7 +214,7 @@ class MasterController:
 
 
     def graspSuccessCallback(self, msg):
-        self.grasp_success = msg.data
+        self.grasp_status = msg.data
 
     def graspFinishedCallback(self, msg):
         self.grasp_finished = msg.data
@@ -438,7 +439,7 @@ class MasterController:
                 if (self.paths[self.approach_path] is not None):
                     while (self.distanceFromTarget() > self.roll_approach_radius):
                         # DEBUG:
-                        print("Distance from target: %0.4f, Radius: %0.4f" % (self.distanceFromTarget(), self.roll_approach_radius))
+                        print("[%s]: Distance from target: %0.4f, Radius: %0.4f" % (rospy.get_name(), self.distanceFromTarget(), self.roll_approach_radius))
                         self.path_pub.publish(self.paths[self.approach_path])
                         self.publishGear(self.gears[self.approach_path])
                         self.rate.sleep()
@@ -460,8 +461,13 @@ class MasterController:
 
                 while (self.grasp_finished == False):
                     self.rate.sleep()
+
                 self.operation_mode = 0
                 message = "Pick grasp completed successfully"
+
+                # Turn off controllers
+                self.control_mode.data = 0 # no controllers
+                self.control_mode_pub.publish(self.control_mode)
 
         resp = SetTargetResponse()
         resp.success = self.grasp_finished

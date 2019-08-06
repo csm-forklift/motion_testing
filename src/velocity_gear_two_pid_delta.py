@@ -45,6 +45,7 @@ class PIDController:
         self.output_min = rospy.get_param("~output_min", 0)
         self.delta_max = rospy.get_param("~delta_max", 100)
         self.delta_min = rospy.get_param("~delta_min", -20)
+        self.delta_threshold = rospy.get_param("~delta_threshold", 0.5) # minimum magnitude of u_delta
         self.error_tolerance = rospy.get_param("~error_tolerance", 0.1)
         self.error_exponent1 = rospy.get_param("~error_exponent1", 1.0) # exponent applied to only the error for the proportional term in the PID controller
         self.error_exponent2 = rospy.get_param("~error_exponent2", 1.0)
@@ -153,9 +154,14 @@ class PIDController:
                 # The output here is PWM going to the Arduino (range 0-255)
                 self.u_delta = min(self.u_delta, self.delta_max)
                 self.u_delta = max(self.u_delta, self.delta_min)
+
                 # Scale the delta based on the steering angle (a higher steering angle should have a higher delta because the full range of the pedal has been reduced)
                 self.u_delta *= 1/(np.sign(np.cos(self.steering_angle))*np.abs(np.cos(self.steering_angle)**2))
                 self.u += self.u_delta
+
+                # DEBUG:
+                print("[%s]: u_delta: %f" % (rospy.get_name(), self.u_delta))
+
                 self.u = min(self.u, self.output_max)
                 self.u = max(self.u, self.output_min)
 
