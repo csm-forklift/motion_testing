@@ -39,6 +39,8 @@ class MasterController:
         self.roll_approach_radius = rospy.get_param("~roll_approach_radius", 2*self.base_to_clamp)
         self.scale_grasp = rospy.get_param("~scale_grasp", 0.5) # speed signal for clamp open/close
         self.scale_movement = rospy.get_param("~scale_movement", 0.5) # speed signal for clamp raise/lower
+        self.maneuver_velocity = rospy.get_param("~maneuver_velocity", 0.1) # max velocity for the two maneuver paths
+        self.previous_max_velocity = rospy.get_param("/velocity_controller/maximum_linear_velocity", 0.25) # max velocity for other paths
 
         # Control deadman parameters
         self.manual_deadman_button = rospy.get_param("~manual_deadman", 4)
@@ -341,6 +343,13 @@ class MasterController:
                 print(30*"=")
                 print("Maneuver part 1")
                 print(30*"=")
+
+                # Get the current maximum velocity for the velocity controller
+                self.previous_max_velocity = rospy.get_param("/velocity_controller/maximum_linear_velocity", self.previous_max_velocity)
+
+                # Set max velocity to the maneuver velocity
+                ropsy.set_param("/velocity_controller/maximum_linear_velocity", self.maneuver_velocity)
+
                 if (self.paths[self.maneuver_path1] is not None):
 
                     if (self.gears[self.maneuver_path1] < 0):
@@ -375,6 +384,10 @@ class MasterController:
                 print(30*"=")
                 print("Maneuver part 2")
                 print(30*"=")
+
+                # Restore the previous manximum velocity for the velocity controller
+                rospy.set_param("/velocity_controller/maximum_linear_velocity", self.previous_max_velocity)
+
                 if (self.paths[self.maneuver_path2] is not None):
 
                     if (self.gears[self.maneuver_path2] < 0):
