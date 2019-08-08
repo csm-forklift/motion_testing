@@ -19,7 +19,7 @@ from motion_testing.srv import SetTarget, SetTargetRequest, SetTargetResponse
 from motion_testing.msg import PathWithGear
 from nav_msgs.msg import Path, Odometry
 from sensor_msgs.msg import Joy
-from std_msgs.msg import Bool, Int8, Float32
+from std_msgs.msg import Bool, Int8, Float32, Float64
 import tf
 import math
 import time
@@ -108,6 +108,7 @@ class MasterController:
         # ROS Publishers and Subscribers
         self.path_pub = rospy.Publisher("/path", Path, queue_size=1)
         self.gear_pub = rospy.Publisher("/velocity_node/gear", Int8, queue_size=3)
+        self.velocity_setpoint_pub = rospy.Publisher("/velocity_node/velocity_setpoint", Float64, queue_size=3)
         self.control_mode_pub = rospy.Publisher("/control_mode", Int8, queue_size=3, latch=True)
         self.clamp_movement_pub = rospy.Publisher("/clamp_switch_node/clamp_movement", Float32, queue_size=1)
         self.clamp_grasp_pub = rospy.Publisher("/clamp_switch_node/clamp_grasp", Float32, queue_size=1)
@@ -356,6 +357,11 @@ class MasterController:
                     # Publish next path and delay
                     self.path_pub.publish(self.paths[self.maneuver_path2])
                     self.publishGear(self.gears[self.maneuver_path2])
+
+                    # Set velocity to 0 before switching modes
+                    velocity_setpoint_msg = Float64()
+                    velocity_setpoint_msg.data = 0.0
+                    self.velocity_setpoint_pub.publish(velocity_setpoint_msg)
                     time.sleep(1)
 
                     self.operation_mode = 4
@@ -383,6 +389,12 @@ class MasterController:
                         self.rate.sleep()
 
                     self.operation_mode = 5
+
+                    # Set velocity to 0 before switching modes
+                    velocity_setpoint_msg = Float64()
+                    velocity_setpoint_msg.data = 0.0
+                    self.velocity_setpoint_pub.publish(velocity_setpoint_msg)
+
                 else:
                     message = "Error: maneuver path 2 was not generated"
                     self.grasp_finished = False
@@ -438,6 +450,9 @@ class MasterController:
 
                 if (self.paths[self.approach_path] is not None):
                     while (self.distanceFromTarget() > self.roll_approach_radius):
+                        # Get forklift's current position
+                        self.acquireRobotPose()
+
                         # DEBUG:
                         print("[%s]: Distance from target: %0.4f, Radius: %0.4f" % (rospy.get_name(), self.distanceFromTarget(), self.roll_approach_radius))
                         self.path_pub.publish(self.paths[self.approach_path])
@@ -445,6 +460,11 @@ class MasterController:
                         self.rate.sleep()
 
                     self.operation_mode = 7
+
+                    # Set velocity to 0 before switching modes
+                    velocity_setpoint_msg = Float64()
+                    velocity_setpoint_msg.data = 0.0
+                    self.velocity_setpoint_pub.publish(velocity_setpoint_msg)
                 else:
                     message = "Error: approach path was not generated"
                     self.grasp_finished = False
