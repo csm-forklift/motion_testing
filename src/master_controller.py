@@ -35,8 +35,9 @@ class MasterController:
     def __init__(self):
         # Read in ROS parameters
         rospy.init_node("master_controller")
+        self.master_operation_mode = rospy.get_param("~master_operation_mode", None)
         self.base_to_clamp = rospy.get_param("/forklift/body/base_to_clamp", 1.4658)
-        self.roll_approach_radius = rospy.get_param("~roll_approach_radius", 2*self.base_to_clamp)
+        self.roll_approach_radius = rospy.get_param("~approach_offset", 2*self.base_to_clamp)
         self.scale_grasp = rospy.get_param("~scale_grasp", 0.5) # speed signal for clamp open/close
         self.scale_movement = rospy.get_param("~scale_movement", 0.5) # speed signal for clamp raise/lower
         self.maneuver_velocity = rospy.get_param("~maneuver_velocity", 0.1) # max velocity for the two maneuver paths
@@ -80,6 +81,11 @@ class MasterController:
         else:
             self.debug_test = "none"
             self.operation_mode = 1 # start in the first mode, wait for service call
+        # Set the operation mode to the provided parameter if it has been set
+        # otherwise do not assign it
+        if (self.master_operation_mode is not None):
+            self.operation_mode = self.master_operation_mode
+
         print("[master_controller]: Starting mode set to: %d" % self.operation_mode)
 
         self.grasp_finished = False # inidcates when grasp operation is fully complete
@@ -106,6 +112,9 @@ class MasterController:
 
         # Publishing rate
         self.rate = rospy.Rate(30)
+
+        # Transform listener for acquiring robot pose
+        self.listener = tf.TransformListener()
 
         # ROS Publishers and Subscribers
         self.path_pub = rospy.Publisher("/path", Path, queue_size=1)
@@ -196,10 +205,9 @@ class MasterController:
         self.forklift_current_pose.pose = copy.deepcopy(msg.pose.pose)
 
     def acquireRobotPose(self):
-        listener = tf.TransformListener()
         try:
-            listener.waitForTransform('/odom', '/base_link', rospy.Time(0), rospy.Duration(1))
-            (trans, rot) = listener.lookupTransform('/odom', '/base_link', rospy.Time(0))
+            self.listener.waitForTransform('odom', 'base_link', rospy.Time(0), rospy.Duration(2.0))
+            (trans, rot) = self.listener.lookupTransform('odom', 'base_link', rospy.Time(0))
 
             self.forklift_current_pose.header.stamp = rospy.Time(0)
             self.forklift_current_pose.header.frame_id = 'odom'
@@ -298,6 +306,8 @@ class MasterController:
                 print(30*"=")
                 print("Optimizing maneuver")
                 print(30*"=")
+                # Set operation mode parameter in case of restart
+                rospy.set_param("~master_operation_mode", self.operation_mode)
                 resp = self.optimizeManeuver(True)
 
                 # DEBUG:
@@ -317,6 +327,9 @@ class MasterController:
                 print(30*"=")
                 print("Obstacle avoidance path")
                 print(30*"=")
+                # Set operation mode parameter in case of restart
+                rospy.set_param("~master_operation_mode", self.operation_mode)
+
                 if (self.paths[self.obstacle_path] is not None):
 
                     self.control_mode.data = 2 # reverse controller
@@ -343,12 +356,14 @@ class MasterController:
                 print(30*"=")
                 print("Maneuver part 1")
                 print(30*"=")
+                # Set operation mode parameter in case of restart
+                rospy.set_param("~master_operation_mode", self.operation_mode)
 
                 # Get the current maximum velocity for the velocity controller
                 self.previous_max_velocity = rospy.get_param("/velocity_controller/maximum_linear_velocity", self.previous_max_velocity)
 
                 # Set max velocity to the maneuver velocity
-                ropsy.set_param("/velocity_controller/maximum_linear_velocity", self.maneuver_velocity)
+                rospy.set_param("/velocity_controller/maximum_linear_velocity", self.maneuver_velocity)
 
                 if (self.paths[self.maneuver_path1] is not None):
 
@@ -384,6 +399,8 @@ class MasterController:
                 print(30*"=")
                 print("Maneuver part 2")
                 print(30*"=")
+                # Set operation mode parameter in case of restart
+                rospy.set_param("~master_operation_mode", self.operation_mode)
 
                 # Restore the previous manximum velocity for the velocity controller
                 rospy.set_param("/velocity_controller/maximum_linear_velocity", self.previous_max_velocity)
@@ -419,6 +436,9 @@ class MasterController:
                 print(30*"=")
                 print("Move clamp to see roll")
                 print(30*"=")
+                # Set operation mode parameter in case of restart
+                rospy.set_param("~master_operation_mode", self.operation_mode)
+                
                 # Turn controllers off
                 self.control_mode.data = 4
                 self.control_mode_pub.publish(self.control_mode)
@@ -457,6 +477,8 @@ class MasterController:
                 print(30*"=")
                 print("Approach path")
                 print(30*"=")
+                # Set operation mode in case of restart
+                rospy.set_param("~master_operation_mode", self.operation_mode)
 
                 self.control_mode.data = 1 # forward controller
                 self.control_mode_pub.publish(self.control_mode)
@@ -488,6 +510,8 @@ class MasterController:
                 print(30*"=")
                 print("Final grasp portion")
                 print(30*"=")
+                # Set operation mode in case of restart
+                rospy.set_param("~master_operation_mode", self.operation_mode)
 
                 self.control_mode.data = 3 # approach + clamp control
                 self.control_mode_pub.publish(self.control_mode)
