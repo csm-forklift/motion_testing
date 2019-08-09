@@ -21,6 +21,7 @@ from nav_msgs.msg import Path, Odometry
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool, Int8, Float32, Float64
 import tf
+import dynamic_reconfigure.client
 import math
 import time
 import copy
@@ -37,7 +38,7 @@ class MasterController:
         rospy.init_node("master_controller")
         self.master_operation_mode = rospy.get_param("~master_operation_mode", None)
         self.base_to_clamp = rospy.get_param("/forklift/body/base_to_clamp", 1.4658)
-        self.roll_approach_radius = rospy.get_param("~approach_offset", 2*self.base_to_clamp)
+        self.approach_offset = rospy.get_param("~approach_offset", 2*self.base_to_clamp)
         self.scale_grasp = rospy.get_param("~scale_grasp", 0.5) # speed signal for clamp open/close
         self.scale_movement = rospy.get_param("~scale_movement", 0.5) # speed signal for clamp raise/lower
         self.maneuver_velocity = rospy.get_param("~maneuver_velocity", 0.1) # max velocity for the two maneuver paths
@@ -61,7 +62,8 @@ class MasterController:
         "grasp": DebugTest(starting_mode=5, allowed_modes=[5,6,7,0]), \
         "obstacle_avoidance": DebugTest(starting_mode=2, allowed_modes=[2]), \
         "maneuver": DebugTest(starting_mode=1, allowed_modes=[1,2,3,4]), \
-        "clamp": DebugTest(starting_mode=7, allowed_modes=[7,0])}
+        "clamp": DebugTest(starting_mode=7, allowed_modes=[7,0]), \
+        "man_to_grasp": DebugTest(starting_mode=3, allowed_modes=[3,4,5,6,7,0])}
 
         # Path indices
         self.obstacle_path = 0
@@ -115,6 +117,9 @@ class MasterController:
 
         # Transform listener for acquiring robot pose
         self.listener = tf.TransformListener()
+
+        # Dynamic reconfigure client
+        self.client = dynamic_reconfigure.client.Client("velocity_controller")
 
         # ROS Publishers and Subscribers
         self.path_pub = rospy.Publisher("/path", Path, queue_size=1)
@@ -296,6 +301,13 @@ class MasterController:
 
             rospy.loginfo("Obstacle path received. Beginning path tracking test.")
 
+        if (self.debug_test == "man_to_grasp"):
+            # run optimization to generate maneuver path
+            resp = self.optimizeManeuver(True)
+
+            # DEBUG:
+            rospy.loginfo("Optimization result: %d\nMessage: %s", resp.optimization_successful, resp.message)
+
 
         #======================================================================#
         # Main Control Loop
@@ -359,11 +371,13 @@ class MasterController:
                 # Set operation mode parameter in case of restart
                 rospy.set_param("~master_operation_mode", self.operation_mode)
 
-                # Get the current maximum velocity for the velocity controller
-                self.previous_max_velocity = rospy.get_param("/velocity_controller/maximum_linear_velocity", self.previous_max_velocity)
+                # Get the current maximum velocity for the velocity controller and the look ahead segments
+                self.previous_max_velocity = rospy.get_param("/velocity_controller/maximum_linear_velocity", self.maneuver_velocity)
+                self.num_of_segments_ahead = rospy.get_param("/velocity_controller/num_of_segments_ahead", 10)
 
-                # Set max velocity to the maneuver velocity
-                rospy.set_param("/velocity_controller/maximum_linear_velocity", self.maneuver_velocity)
+                # Set max velocity to the maneuver velocity and reduce the look ahead segments to 1 since these paths are smooth
+                params = {"maximum_linear_velocity" : self.maneuver_velocity, "num_of_segments_ahead" : 1}
+                config = self.client.update_configuration(params)
 
                 if (self.paths[self.maneuver_path1] is not None):
 
@@ -402,9 +416,6 @@ class MasterController:
                 # Set operation mode parameter in case of restart
                 rospy.set_param("~master_operation_mode", self.operation_mode)
 
-                # Restore the previous manximum velocity for the velocity controller
-                rospy.set_param("/velocity_controller/maximum_linear_velocity", self.previous_max_velocity)
-
                 if (self.paths[self.maneuver_path2] is not None):
 
                     if (self.gears[self.maneuver_path2] < 0):
@@ -438,7 +449,7 @@ class MasterController:
                 print(30*"=")
                 # Set operation mode parameter in case of restart
                 rospy.set_param("~master_operation_mode", self.operation_mode)
-                
+
                 # Turn controllers off
                 self.control_mode.data = 4
                 self.control_mode_pub.publish(self.control_mode)
@@ -480,16 +491,20 @@ class MasterController:
                 # Set operation mode in case of restart
                 rospy.set_param("~master_operation_mode", self.operation_mode)
 
+                # Restore the previous maximum velocity for the velocity controller
+                params = {"maximum_linear_velocity" : self.previous_max_velocity}
+                config = self.client.update_configuration(params)
+
                 self.control_mode.data = 1 # forward controller
                 self.control_mode_pub.publish(self.control_mode)
 
                 if (self.paths[self.approach_path] is not None):
-                    while (self.distanceFromTarget() > self.roll_approach_radius):
+                    while (self.distanceFromTarget() > self.approach_offset):
                         # Get forklift's current position
                         self.acquireRobotPose()
 
                         # DEBUG:
-                        print("[%s]: Distance from target: %0.4f, Radius: %0.4f" % (rospy.get_name(), self.distanceFromTarget(), self.roll_approach_radius))
+                        print("[%s]: Distance from target: %0.4f, Radius: %0.4f" % (rospy.get_name(), self.distanceFromTarget(), self.approach_offset))
                         self.path_pub.publish(self.paths[self.approach_path])
                         self.publishGear(self.gears[self.approach_path])
                         self.rate.sleep()
@@ -500,6 +515,10 @@ class MasterController:
                     velocity_setpoint_msg = Float64()
                     velocity_setpoint_msg.data = 0.0
                     self.velocity_setpoint_pub.publish(velocity_setpoint_msg)
+
+                    # Restore the look ahead segments
+                    params = {"num_of_segments_ahead" : self.num_of_segments_ahead}
+                    config = client.update_configuration(params)
                 else:
                     message = "Error: approach path was not generated"
                     self.grasp_finished = False
@@ -515,6 +534,12 @@ class MasterController:
 
                 self.control_mode.data = 3 # approach + clamp control
                 self.control_mode_pub.publish(self.control_mode)
+
+                # Make sure that the system stops while switching between the regular velocity controller and teh clamp approach controller
+                # Set velocity to 0 before switching modes
+                velocity_setpoint_msg = Float64()
+                velocity_setpoint_msg.data = 0.0
+                self.velocity_setpoint_pub.publish(velocity_setpoint_msg)
 
                 while (self.grasp_finished == False):
                     self.rate.sleep()
