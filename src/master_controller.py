@@ -518,7 +518,7 @@ class MasterController:
 
                     # Restore the look ahead segments
                     params = {"num_of_segments_ahead" : self.num_of_segments_ahead}
-                    config = client.update_configuration(params)
+                    config = self.client.update_configuration(params)
                 else:
                     message = "Error: approach path was not generated"
                     self.grasp_finished = False

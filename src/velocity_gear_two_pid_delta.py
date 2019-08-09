@@ -46,7 +46,7 @@ class PIDController:
         self.delta_max = rospy.get_param("~delta_max", 100)
         self.delta_min = rospy.get_param("~delta_min", -20)
         self.delta_threshold = rospy.get_param("~delta_threshold", 0.5) # minimum magnitude of u_delta
-        self.error_tolerance = rospy.get_param("~error_tolerance", 0.1)
+        self.error_tolerance = rospy.get_param("~error_tolerance", 0.05)
         self.error_exponent1 = rospy.get_param("~error_exponent1", 1.0) # exponent applied to only the error for the proportional term in the PID controller
         self.error_exponent2 = rospy.get_param("~error_exponent2", 1.0)
 
@@ -66,26 +66,26 @@ class PIDController:
         self.steering_angle_sub = rospy.Subscriber("/steering_node/filtered_angle", Float64, self.steering_angle_callback, queue_size=3)
 
         # Rate at which to run the control loop, based on 'delta_t'
-        self.rate = rospy.Rate(1/self.delta_t)
+        self.rate = rospy.Rate(1.0/self.delta_t)
 
         #===== Initialize variables =====#
         # Current steering angle
-        self.steering_angle = 0
+        self.steering_angle = 0.0
 
         # Error terms
-        self.e_curr = 0
-        self.e_prev = 0
-        self.e_sum = 0
+        self.e_curr = 0.0
+        self.e_prev = 0.0
+        self.e_sum = 0.0
         self.e_sum_queue = Queue.Queue()
 
         # Control variable
-        self.u = 0
-        self.u_delta = 0
+        self.u = 0.0
+        self.u_delta = 0.0
         self.u_msg = UInt8()
 
         # Process outputs
-        self.y_setpoint = 0
-        self.y_curr = 0
+        self.y_setpoint = 0.0
+        self.y_curr = 0.0
 
         # Times
         self.t_curr = time.time()
@@ -131,7 +131,7 @@ class PIDController:
                 #==============================================================#
                 if (self.y_setpoint == 0):
                     self.u_delta = self.delta_min
-                elif (abs(self.e_curr) > self.error_tolerance):
+                elif (abs(self.e_curr) > self.error_tolerance or self.y_setpoint <= self.error_tolerance):
                     if (self.e_curr >= 0):
                         # Control Law 1
                         # Error is positive, so forklift needs to accelerate
@@ -157,6 +157,7 @@ class PIDController:
 
                 # Scale the delta based on the steering angle (a higher steering angle should have a higher delta because the full range of the pedal has been reduced)
                 self.u_delta *= 1/(np.sign(np.cos(self.steering_angle))*np.abs(np.cos(self.steering_angle)**2))
+
                 self.u += self.u_delta
 
                 # DEBUG:
