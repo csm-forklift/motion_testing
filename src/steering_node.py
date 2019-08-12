@@ -162,7 +162,7 @@ class SteeringController():
         # Attach to Phidget
         print("* Opening and Waiting for Attachment...")
         try:
-            self.ch.openWaitForAttachment(3000)
+            self.ch.openWaitForAttachment(1000)
         except PhidgetException as e:
             PrintOpenErrorMessage(e, self.ch)
             raise EndProgramSignal("Program Terminated: Open Failed")

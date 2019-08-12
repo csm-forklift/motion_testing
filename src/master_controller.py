@@ -152,6 +152,7 @@ class MasterController:
         # optimization was successful
         print("="*30)
         print("Waiting for maneuver service")
+        print("="*30)
 
         self.trigger_optimization = True
         rospy.wait_for_service("/maneuver_path/optimize_maneuver")
@@ -163,6 +164,7 @@ class MasterController:
         # Set Target Services
         print("="*30)
         print("Creating service for pick")
+        print("="*30)
 
         self.pick_target_srv = rospy.Service("~set_pick_target", SetTarget, self.pickTarget)
         self.drop_target_srv = rospy.Service("~set_drop_target", SetTarget, self.dropTarget)
@@ -499,6 +501,8 @@ class MasterController:
                 self.control_mode_pub.publish(self.control_mode)
 
                 if (self.paths[self.approach_path] is not None):
+                    self.acquireRobotPose()
+                    print("[%s]: Distance from target: %0.4f, Radius: %0.4f" % (rospy.get_name(), self.distanceFromTarget(), self.approach_offset))
                     while (self.distanceFromTarget() > self.approach_offset):
                         # Get forklift's current position
                         self.acquireRobotPose()
