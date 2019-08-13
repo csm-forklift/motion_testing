@@ -66,12 +66,4 @@
         <param name="error_exponent2" value="1.0" />
     </node>
     
-    <!--=====================-->
-    <!-- Clamp Control Nodes -->
-    <!--=====================-->
-    <!-- The arduino running this code must be a MEGA and should be running "grasping/src/clamp_switch/clamp_switch.ino", see file for wiring -->
-    <node pkg="rosserial_python" type="serial_node.py" name="clamp_switch_arduino">
-        <param name="port" value="$(arg port_clamp)"/>
-    </node>
-    
 </launch>

@@ -7,6 +7,7 @@
     <arg name="autonomous_deadman" default="5"/>
     <arg name="timeout" default="1.0"/>
     <arg name="joy_dev" default="/dev/input/js0"/>
+    <arg name="joy_clamp_scale" default="1.0"/>
 
     <!--========================-->
     <!-- Joystick Control Nodes -->
@@ -22,7 +23,7 @@
         <param name="autonomous_deadman" value="$(arg autonomous_deadman)"/>
         <param name="timeout" value="$(arg timeout)"/>
         <param name="vel_max" value="0.5"/>
-        <param name="clamp_scale" value="1.0"/>
+        <param name="clamp_scale" value="$(arg joy_clamp_scale)"/>
     </node>
     
 </launch>

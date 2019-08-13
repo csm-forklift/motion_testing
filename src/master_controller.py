@@ -453,7 +453,8 @@ class MasterController:
                 rospy.set_param("~master_operation_mode", self.operation_mode)
 
                 # Turn controllers off
-                self.control_mode.data = 4
+                # FIXME: trying turning off the cylinder detection to avoid errors before actually approaching the roll
+                self.control_mode.data = 0
                 self.control_mode_pub.publish(self.control_mode)
 
                 # Open the clamp
