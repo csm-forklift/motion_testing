@@ -40,7 +40,8 @@ class MasterController:
         self.base_to_clamp = rospy.get_param("/forklift/body/base_to_clamp", 1.4658)
         self.approach_offset = rospy.get_param("~approach_offset", 2*self.base_to_clamp)
         self.scale_grasp = rospy.get_param("~scale_grasp", 0.5) # speed signal for clamp open/close
-        self.scale_movement = rospy.get_param("~scale_movement", 0.5) # speed signal for clamp raise/lower
+        self.scale_movement_up = rospy.get_param("~scale_movement_up", 0.5) # speed signal for clamp raise
+        self.scale_movement_down = rospy.get_param("~scale_movement_down", 0.5) # speed signal for clamp lower
         self.maneuver_velocity = rospy.get_param("~maneuver_velocity", 0.1) # max velocity for the two maneuver paths
         self.previous_max_velocity = rospy.get_param("/velocity_controller/maximum_linear_velocity", 0.25) # max velocity for other paths
 
@@ -466,7 +467,7 @@ class MasterController:
 
                 # Lower the clamp
                 while (self.switch_status_down == False):
-                    self.publishClampMovement(self.scale_movement) # positive is down
+                    self.publishClampMovement(self.scale_movement_down) # positive is down
                     self.rate.sleep()
                 # Send the stop command
                 self.publishClampMovement(0)
