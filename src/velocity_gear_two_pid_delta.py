@@ -100,7 +100,7 @@ class PIDController:
             current_time = time.time()
             timeout_delta = current_time - self.timeout_start
             velocity_timeout_delta = current_time - self.velocity_timeout_start
-            
+
             if ((self.manual_deadman_on or self.autonomous_deadman_on) and (timeout_delta < self.timeout) and (velocity_timeout_delta < self.velocity_timeout)):
                 #===== Calculate the control variable using the current process measurement and setpoint =====#
                 # Calculate error
@@ -160,14 +160,11 @@ class PIDController:
 
                 self.u += self.u_delta
 
-                # DEBUG:
-                print("[%s]: u_delta: %f" % (rospy.get_name(), self.u_delta))
-
                 self.u = min(self.u, self.output_max)
                 self.u = max(self.u, self.output_min)
 
                 # DEBUG:
-                print("control: %d, delta: %0.4f, error: %0.4f, vel sp: %0.4f, vel curr: %0.4f" % (self.u, self.u_delta, self.e_curr, self.y_setpoint, self.y_curr))
+                print("[%s]: control: %d, delta: %0.4f, error: %0.4f, vel sp: %0.4f, vel curr: %0.4f" % (rospy.get_name(), self.u, self.u_delta, self.e_curr, self.y_setpoint, self.y_curr))
             else:
                 if (velocity_timeout_delta >= self.velocity_timeout):
                     print("[%s]: velocity message has timed out, check the CANBUS connection" % (rospy.get_name()))
