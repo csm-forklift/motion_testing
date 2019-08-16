@@ -100,6 +100,7 @@ class JoystickController:
                 # Calculate the velocity based on joystick input
                 self.velocity = self.vel_scale*self.vel_max
                 self.pwm = self.vel_scale*self.pwm_max
+                self.pwm = max(0, self.pwm)
 
                 # If gear is "forward" make sure velocity is positive, if "reverse" it should be negative
                 if (self.gear == 1):
