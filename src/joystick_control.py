@@ -12,11 +12,11 @@ joystick at the desired angle to get the precise steering angle. The other mode
 treats the joystick as relative motion, so it represents a change in the
 steering angle. The harder the joystick is angled, the faster the steering angle
 with change. If the joystick is brought back to its 0 position, then the
-steering angle will remain constant at is current position.
+steering angle will remain constant at its current position.
 '''
 
 import rospy
-from std_msgs.msg import Float32, Float64, Bool, Int8
+from std_msgs.msg import Float32, Float64, Bool, Int8, UInt8
 from sensor_msgs.msg import Joy
 import math
 import time
@@ -30,8 +30,10 @@ class JoystickController:
         #===== Set Parameters =====#
         self.angle_max = rospy.get_param("~angle_max", 75*(math.pi/180.))
         self.vel_max = rospy.get_param("~vel_max", 0.5)
+        self.pwm_max = rospy.get_param("~pwm_max", 255)
         self.clamp_scale = rospy.get_param("~clamp_scale", 0.5)
         self.steering_mode = rospy.get_param("~steering_mode", "relative")
+        self.pedal_mode = ropsy.get_param("~pedal_mode", "velocity")
         self.manual_deadman_button = rospy.get_param("~manual_deadman", 4)
         self.manual_deadman_on = False
         self.autonomous_deadman_button = rospy.get_param("~autonomous_deadman", 5)
@@ -45,6 +47,9 @@ class JoystickController:
         if self.steering_mode not in ["relative", "absolute"]:
             rospy.loginfo("steering_mode value: '%s', is not a valid option. Must be either 'relative' or 'absolute'. Setting to 'relative'." % self.steering_mode)
             self.steering_mode = "relative"
+        if self.pedal_mode not in ["velocity", "pwm"]:
+            rospy.loginfo("[%s]: pedal_mode value: '%s', is not a valid option. Must be either 'velocity' or 'pwm'. Setting to 'velocity'." % (rospy.get_name(), self.pedal_mode))
+            self.pedal_mode = "velocity"
         # If the mode is set to "relative", this parameter is scaled by the
         # joystick value and then used to update the current angle based on the
         # update rate time.
@@ -59,7 +64,9 @@ class JoystickController:
         #===== Initialize Variables =====#
         self.vel_scale = 0
         self.velocity = 0
+        self.pwm = 0
         self.velocity_msg = Float64()
+        self.pwm_msg = UInt8()
         self.angle_scale = 0
         self.angle = 0
         self.angle_msg = Float64()
@@ -73,9 +80,10 @@ class JoystickController:
 
         self.delta_t = (1/30.)
         self.rate = rospy.Rate(1/self.delta_t)
-        
+
          #===== Publishers and Subscribers =====#
         self.vel_setpoint_pub = rospy.Publisher("/velocity_node/velocity_setpoint", Float64, queue_size=3)
+        self.pwm_pub = rospy.Publisher("/velocity_node/pedal_pwm", UInt8, queue_size=3)
         self.angle_setpoint_pub = rospy.Publisher("/steering_node/angle_setpoint", Float64, queue_size=3)
         self.pedal_switch_pub = rospy.Publisher("/velocity_node/pedal_switch", Bool, queue_size=3)
         self.clamp_movement_pub = rospy.Publisher("/clamp_switch_node/clamp_movement", Float32, queue_size=3)
@@ -91,6 +99,7 @@ class JoystickController:
             if (self.manual_deadman_on and (time.time() - self.timeout_start) < self.timeout):
                 # Calculate the velocity based on joystick input
                 self.velocity = self.vel_scale*self.vel_max
+                self.pwm = self.vel_scale*self.pwm_max
 
                 # If gear is "forward" make sure velocity is positive, if "reverse" it should be negative
                 if (self.gear == 1):
@@ -116,19 +125,27 @@ class JoystickController:
                         self.angle = -self.angle_scale*self.angle_max
 
                 # Publish the messages
-                self.velocity_msg.data = self.velocity
-                self.angle_msg.data = self.angle
-
                 # # DEBUG:
                 # print("[joystick] publishing velocity setpoint")
-
-                self.vel_setpoint_pub.publish(self.velocity_msg)
-                self.angle_setpoint_pub.publish(self.angle_msg)
+                self.velocity_msg.data = self.velocity
+                self.pwm_msg.data = Int(self.pwm)
+                self.angle_msg.data = self.angle
                 self.open_msg.data = self.clamp_scale*self.open_command
                 self.raise_msg.data = self.clamp_scale*self.raise_command
-                self.clamp_grasp_pub.publish(self.open_msg)
-                self.clamp_movement_pub.publish(self.raise_msg)
                 self.gear_msg.data = self.gear
+
+                # Velocity
+                if (self.pedal_mode == "velocity"):
+                    self.vel_setpoint_pub.publish(self.velocity_msg)
+                elif (self.pedal_mode == "pwm"):
+                    self.pwm_pub.publish(self.pwm_msg)
+                # Steering angle
+                self.angle_setpoint_pub.publish(self.angle_msg)
+                # Clamp grasp
+                self.clamp_grasp_pub.publish(self.open_msg)
+                # Clamp raise/lower
+                self.clamp_movement_pub.publish(self.raise_msg)
+                # Gear
                 self.gear_pub.publish(self.gear_msg)
             elif (self.autonomous_deadman_on and (time.time() - self.timeout_start) < self.timeout):
                 # Send no command
