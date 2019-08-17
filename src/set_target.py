@@ -47,13 +47,13 @@ def main():
 
     elif (target_location == "grasp"):
         print("[%s]: using 'grasp' target" % rospy.get_name())
-        request.roll_pose.pose.position.x = 4.0
+        request.roll_pose.pose.position.x = -6.0
         request.roll_pose.pose.position.y = 0.0
         request.roll_pose.pose.position.z = 0.0
         request.roll_pose.pose.orientation.x = 0.0
         request.roll_pose.pose.orientation.y = 0.0
-        request.roll_pose.pose.orientation.z = 1.0
-        request.roll_pose.pose.orientation.w = 0.0
+        request.roll_pose.pose.orientation.z = 0.0
+        request.roll_pose.pose.orientation.w = 1.0
 
     resp = set_target(request)
     print(resp)
