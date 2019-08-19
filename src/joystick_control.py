@@ -33,7 +33,7 @@ class JoystickController:
         self.pwm_max = rospy.get_param("~pwm_max", 255)
         self.clamp_scale = rospy.get_param("~clamp_scale", 0.5)
         self.steering_mode = rospy.get_param("~steering_mode", "relative")
-        self.pedal_mode = ropsy.get_param("~pedal_mode", "velocity")
+        self.pedal_mode = rospy.get_param("~pedal_mode", "velocity")
         self.manual_deadman_button = rospy.get_param("~manual_deadman", 4)
         self.manual_deadman_on = False
         self.autonomous_deadman_button = rospy.get_param("~autonomous_deadman", 5)
@@ -129,7 +129,7 @@ class JoystickController:
                 # # DEBUG:
                 # print("[joystick] publishing velocity setpoint")
                 self.velocity_msg.data = self.velocity
-                self.pwm_msg.data = Int(self.pwm)
+                self.pwm_msg.data = int(self.pwm)
                 self.angle_msg.data = self.angle
                 self.open_msg.data = self.clamp_scale*self.open_command
                 self.raise_msg.data = self.clamp_scale*self.raise_command
