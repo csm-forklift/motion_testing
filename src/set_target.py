@@ -28,7 +28,7 @@ def main():
     if (target_location == "demo"):
         print("[%s]: using 'demo' target" % rospy.get_name())
         request.roll_pose.pose.position.x = 9.0
-        request.roll_pose.pose.position.y = 2.0
+        request.roll_pose.pose.position.y = 3.0
         request.roll_pose.pose.position.z = 0.0
         request.roll_pose.pose.orientation.x = 0.0
         request.roll_pose.pose.orientation.y = 0.0
