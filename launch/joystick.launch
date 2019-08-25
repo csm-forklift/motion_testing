@@ -24,7 +24,7 @@
         <param name="timeout" value="$(arg timeout)"/>
         <param name="vel_max" value="0.5"/>
         <param name="pwm_max" value="255"/>
-        <param name="pedal_mode" value="pwm"/>
+        <param name="pedal_mode" value="velocity"/>
         <param name="steering_mode" value="absolute"/>
         <param name="clamp_scale" value="$(arg joy_clamp_scale)"/>
     </node>
