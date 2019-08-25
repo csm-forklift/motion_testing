@@ -374,9 +374,10 @@ class MasterController:
                 # Set operation mode parameter in case of restart
                 rospy.set_param("~master_operation_mode", self.operation_mode)
 
-                # Get the current maximum velocity for the velocity controller and the look ahead segments
+                # Get the current maximum velocity for the velocity controller, look ahead segments, and cross track error gain
                 self.previous_max_velocity = rospy.get_param("/velocity_controller/maximum_linear_velocity", self.maneuver_velocity)
                 self.num_of_segments_ahead = rospy.get_param("/velocity_controller/num_of_segments_ahead", 10)
+                self.previous_cte_gain = rospy.get_param("/velocity_controller/cte_gain", 0.2)
 
                 # Set max velocity to the maneuver velocity and reduce the look ahead segments to 1 since these paths are smooth
                 params = {"maximum_linear_velocity" : self.maneuver_velocity, "num_of_segments_ahead" : 1}
@@ -496,7 +497,7 @@ class MasterController:
                 rospy.set_param("~master_operation_mode", self.operation_mode)
 
                 # Restore the previous maximum velocity for the velocity controller
-                params = {"maximum_linear_velocity" : 0.15, "num_of_segments_ahead" : 5}
+                params = {"maximum_linear_velocity" : 0.15, "num_of_segments_ahead" : 5, "cte_gain" : 0.5}
                 config = self.client.update_configuration(params)
 
                 self.control_mode.data = 1 # forward controller
