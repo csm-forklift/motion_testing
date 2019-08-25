@@ -496,7 +496,7 @@ class MasterController:
                 rospy.set_param("~master_operation_mode", self.operation_mode)
 
                 # Restore the previous maximum velocity for the velocity controller
-                params = {"maximum_linear_velocity" : self.previous_max_velocity}
+                params = {"maximum_linear_velocity" : 0.15, "num_of_segments_ahead" : 5}
                 config = self.client.update_configuration(params)
 
                 self.control_mode.data = 1 # forward controller
