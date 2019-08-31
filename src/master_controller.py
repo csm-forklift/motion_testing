@@ -542,7 +542,7 @@ class MasterController:
                 self.control_mode.data = 3 # approach + clamp control
                 self.control_mode_pub.publish(self.control_mode)
 
-                # Make sure that the system stops while switching between the regular velocity controller and teh clamp approach controller
+                # Make sure that the system stops while switching between the regular velocity controller and the clamp approach controller
                 # Set velocity to 0 before switching modes
                 velocity_setpoint_msg = Float64()
                 velocity_setpoint_msg.data = 0.0
