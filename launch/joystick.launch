@@ -8,6 +8,10 @@
     <arg name="timeout" default="1.0"/>
     <arg name="joy_dev" default="/dev/input/js0"/>
     <arg name="joy_clamp_scale" default="1.0"/>
+    <!-- options: velocity, pmw -->
+    <arg name="pedal_mode" default="velocity"/>
+    <!-- options: relative, absolute -->
+    <arg name="steering_mode" default="relative"/>
 
     <!--========================-->
     <!-- Joystick Control Nodes -->
@@ -24,8 +28,8 @@
         <param name="timeout" value="$(arg timeout)"/>
         <param name="vel_max" value="0.5"/>
         <param name="pwm_max" value="255"/>
-        <param name="pedal_mode" value="velocity"/>
-        <param name="steering_mode" value="absolute"/>
+        <param name="pedal_mode" value="$(arg pedal_mode)"/>
+        <param name="steering_mode" value="$(arg steering_mode)"/>
         <param name="clamp_scale" value="$(arg joy_clamp_scale)"/>
     </node>
     
