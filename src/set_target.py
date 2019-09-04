@@ -43,9 +43,9 @@ def main():
         # request.roll_pose.pose.orientation.w = math.sqrt(0.5)
 
     elif (target_location == "demo2"):
-        print("[%s]: using 'demo1' target" % rospy.get_name())
-        request.roll_pose.pose.position.x = 3.0
-        request.roll_pose.pose.position.y = -11.0
+        print("[%s]: using 'demo2' target" % rospy.get_name())
+        request.roll_pose.pose.position.x = 5.0
+        request.roll_pose.pose.position.y = -12.0
         request.roll_pose.pose.position.z = 0.0
         yaw = math.pi/4.0
         quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
@@ -73,6 +73,22 @@ def main():
         request.roll_pose.pose.orientation.y = 0.0
         request.roll_pose.pose.orientation.z = 0.0
         request.roll_pose.pose.orientation.w = 1.0
+
+    elif (target_location == "test"):
+        print("[%s]: using 'test' target" % rospy.get_name())
+        request.roll_pose.pose.position.x = 5.0
+        request.roll_pose.pose.position.y = -12.0
+        request.roll_pose.pose.position.z = 0.0
+        yaw = -math.pi/2.0
+        quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
+        request.roll_pose.pose.orientation.x = quat[0]
+        request.roll_pose.pose.orientation.y = quat[1]
+        request.roll_pose.pose.orientation.z = quat[2]
+        request.roll_pose.pose.orientation.w = quat[3]
+
+    else:
+        print("Unknown target location set.")
+        return
 
     resp = set_target(request)
     print(resp)
