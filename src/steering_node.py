@@ -272,6 +272,9 @@ class SteeringController():
     def control_loop(self):
         # Check if deadman switch is pressed
         if ((self.manual_deadman_on or self.autonomous_deadman_on) and (time.time() - self.timeout_start) < self.timeout and (self.gear != 0)):
+            # FIXME: Uncomment this line if you are able to test it. Also uncomment the corresponding line in the 'else' condition.
+            # self.ch.setEngaged(True)
+
             # Determine direction
             error = self.angle_setpoint - self.angle
 
@@ -343,6 +346,9 @@ class SteeringController():
                 DisplayError(e)
         else:
             self.ch.setVelocityLimit(0)
+
+            # FIXME: Uncomment this line if you are able to test it. Also uncomment the corresponding line in the 'if' condition.
+            # self.ch.setEngaged(False)
 
     def setpoint_callback(self, msg):
         # Read in new setpoint and saturate against the bounds
