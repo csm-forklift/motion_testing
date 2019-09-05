@@ -126,6 +126,12 @@ class MasterController:
         self.path_pub = rospy.Publisher("/path", Path, queue_size=1)
         self.gear_pub = rospy.Publisher("/velocity_node/gear", Int8, queue_size=3)
         self.velocity_setpoint_pub = rospy.Publisher("/velocity_node/velocity_setpoint", Float64, queue_size=3)
+        # Control Mode Options
+        # 0) No controllers running
+        # 1) Forward velocity controller
+        # 2) Reverse velocity controller
+        # 3) Approach controller + Clamp controller + cylinder detection
+        # 4) Cylinder detection only
         self.control_mode_pub = rospy.Publisher("/control_mode", Int8, queue_size=3, latch=True)
         self.clamp_movement_pub = rospy.Publisher("/clamp_switch_node/clamp_movement", Float32, queue_size=1)
         self.clamp_grasp_pub = rospy.Publisher("/clamp_switch_node/clamp_grasp", Float32, queue_size=1)
@@ -565,7 +571,7 @@ class MasterController:
 
     def dropTarget(self, req):
         '''
-        Description of modes and stateflow
+        TODO: Description of modes and stateflow
         '''
         resp = SetTargetResponse()
         resp.success = False
