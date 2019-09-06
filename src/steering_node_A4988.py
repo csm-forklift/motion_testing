@@ -15,6 +15,7 @@ from sensor_msgs.msg import Joy
 
 class SteeringController():
     def __init__(self):
+        rospy.init_node("steering_node")
         # Set control mode
         # 0 = step mode (target position)
         # 1 = run mode (target velocity)
@@ -28,7 +29,9 @@ class SteeringController():
         # Max and Min angles to turn of the velocity if they are reached
         self.max_angle = rospy.get_param("/forklift/steering/max_angle", 75*(math.pi/180.))
         self.min_angle = rospy.get_param("/forklift/steering/min_angle", -75*(math.pi/180.))
-        self.max_vel_scale = rospy.get_param("/forklift/steering/max_vel_scale", 0.17)
+        self.max_vel_scale = rospy.get_param("~max_vel_scale", 0.17)
+        print("[%s]: using max_vel_scale: %0.04f" % (rospy.get_name(), self.max_vel_scale))
+        self.ramp_time_vel = rospy.get_param("~ramp_time_vel", 1.5) # number of seconds to ramp up to full velocity again
 
         # DEBUG: print max angle values used
         print("[steering_node] Bounding setpoint angles to, Max: {0:0.3f} ({1:0.3f} deg) Min: {2:0.3f} ({3:0.3f} deg)".format(self.max_angle, self.max_angle*(180/math.pi), self.min_angle, self.min_angle*(180/math.pi)))
@@ -41,7 +44,6 @@ class SteeringController():
         #===============================================================#
         # Tuning parameters
         self.max_repeats = 5 # the maximum number of times the motor can be seen as not moving before reseting
-        self.ramp_time_vel = 1.5 # number of seconds to ramp up to full velocity again
         self.ramp_time_accel = 1.5 # number of seconds to ramp up to full acceleration again
 
         # Operation states
@@ -57,7 +59,6 @@ class SteeringController():
         #=========================#
         # Create ROS Node Objects
         #=========================#
-        rospy.init_node("steering_node")
         # Specify general parameters
         self.rl_axes = 3
         self.manual_deadman_button = rospy.get_param("~manual_deadman", 4)
@@ -133,50 +134,48 @@ class SteeringController():
                 self.velocity = 0
 
             #===== Stall Check and Set Velocity =====#
-            try:
-                # Check if the system is stalled
-                if (self.check_stall()):
-                    # Initiate "ramp-up" mode
-                    self.reset_rampup()
+            # Check if the system is stalled
+            if (self.check_stall()):
+                # Initiate "ramp-up" mode
+                self.reset_rampup()
 
-                if (self.operation_mode == 0):
-                    # Normal mode
-                    self.velocity_msg.data = self.velocity
-                    self.velocity_pub.publish(self.velocity_msg)
+            if (self.operation_mode == 0):
+                # Normal mode
+                self.velocity_msg.data = self.velocity
+                self.velocity_pub.publish(self.velocity_msg)
 
-                    # Scale down the acceleration as the velocity increases
-                    # # (Linear)
-                    # accel_vel_scale = (self.max_velocity - abs(self.velocity_current))/(self.max_velocity)
-                    # accel_vel_scale = min(accel_vel_scale, 1)
-                    # accel_vel_scale = max(accel_vel_scale, 0)
+                # Scale down the acceleration as the velocity increases
+                # # (Linear)
+                # accel_vel_scale = (self.max_velocity - abs(self.velocity_current))/(self.max_velocity)
+                # accel_vel_scale = min(accel_vel_scale, 1)
+                # accel_vel_scale = max(accel_vel_scale, 0)
 
-                    # (Inverse)
-                    # parameters
-                    unchanged_length = 0.75 # increase this value to increase the range where the accelerations remains unreduced
-                    final_scale = 10 # increase this value to decrease the final scale value at max velocity
+                # (Inverse)
+                # parameters
+                unchanged_length = 0.75 # increase this value to increase the range where the accelerations remains unreduced
+                final_scale = 10 # increase this value to decrease the final scale value at max velocity
 
-                    # Set acceleration
-                    print("Current velocity: %f, max: %f" % (self.velocity, self.max_velocity))
+                # Set acceleration
+                print("Current velocity: %f, max: %f" % (self.velocity, self.max_velocity))
 
-                else:
-                    # Ramp-up mode
-                    t_curr = time.time()
-                    scale_vel = min((t_curr - self.ramp_start)/self.ramp_time_vel, 1)**3
+            else:
+                # Ramp-up mode
+                t_curr = time.time()
+                scale_vel = min((t_curr - self.ramp_start)/self.ramp_time_vel, 1)**3
 
-                    # DEBUG: print accel scaling
-                    print("t_curr: %f" % t_curr)
-                    print("time diff: %f" % (t_curr - self.ramp_start))
-                    print("vel scale: %f" % scale_vel)
-                    print("Vel: %f" % (scale_vel*self.velocity))
+                # DEBUG: print accel scaling
+                print("t_curr: %f" % t_curr)
+                print("time diff: %f" % (t_curr - self.ramp_start))
+                print("vel scale: %f" % scale_vel)
+                print("Vel: %f" % (scale_vel*self.velocity))
 
-                    self.velocity_msg.data = scale_vel*self.velocity
-                    self.velocity_pub.publish(self.velocity_msg)
+                self.velocity_msg.data = scale_vel*self.velocity
+                self.velocity_pub.publish(self.velocity_msg)
 
-                    # When ramping has finished resume normal operation
-                    if (scale_vel == 1 and scale_accel == 1):
-                        self.operation_mode = 0
-            except PhidgetException as e:
-                DisplayError(e)
+                # When ramping has finished resume normal operation
+                if (scale_vel == 1):
+                    self.operation_mode = 0
+
         else:
             self.velocity_msg.data = 0
             self.velocity_pub.publish(self.velocity_msg)

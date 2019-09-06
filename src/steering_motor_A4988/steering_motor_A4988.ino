@@ -17,8 +17,8 @@ float velocity = 0.0; // desired velocity in steps/sec
 bool enable = false; // turns the motor power on and off
 void velocityCallback(std_msgs::Float32 &msg);
 void enableCallback(std_msgs::Bool &msg);
-ros::Subscriber<std_msgs::Float32> velocity_sub("/steering_node_A4988/motor/velocity", &velocityCallback);
-ros::Subscriber<std_msgs::Bool> enable_sub("/steering_node_A4988/motor/enable", &enableCallback);
+ros::Subscriber<std_msgs::Float32> velocity_sub("/steering_node/motor/velocity", &velocityCallback);
+ros::Subscriber<std_msgs::Bool> enable_sub("/steering_node/motor/enable", &enableCallback);
  
 void setup() {
   //----- Set up ROS -----//

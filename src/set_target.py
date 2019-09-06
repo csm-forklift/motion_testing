@@ -76,8 +76,13 @@ def main():
 
     elif (target_location == "test"):
         print("[%s]: using 'test' target" % rospy.get_name())
+<<<<<<< HEAD
         request.roll_pose.pose.position.x = -4.0
         request.roll_pose.pose.position.y = 0.0
+=======
+        request.roll_pose.pose.position.x = -5.0
+        request.roll_pose.pose.position.y = 2.0
+>>>>>>> fa538f14fd1a17e9d04050fd1e120faa4e46f7c5
         request.roll_pose.pose.position.z = 0.0
         yaw = -math.pi/4.0
         quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
