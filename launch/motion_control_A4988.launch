@@ -13,6 +13,8 @@
     <arg name="output_min" default="0"/>
     <arg name="max_angle" default="1.309"/> <!-- 75deg -->
     <arg name="min_angle" default="-1.309"/> <!-- -75deg -->
+    <arg name="max_vel_scale" default="0.9"/>
+    <arg name="ramp_time_vel" default="1.5"/>
 
     <!--========================-->
     <!-- Steering Control Nodes -->
@@ -20,10 +22,15 @@
     <include file="$(find sensors)/launch/localization_steer.launch">
         <arg name="port_steering" value="$(arg port_steering)"/>
     </include>
-    <node pkg="motion_testing" type="steering_node.py" name="steering_node" respawn="true">
+    <node pkg="rosserial_python" type="serial_node.py" name="steering_node_A4988_arduino">
+        <param name="port" value="/dev/ttyACM2"/>
+    </node>
+    <node pkg="motion_testing" type="steering_node_A4988.py" name="steering_node" respawn="true">
         <param name="manual_deadman" value="$(arg manual_deadman)" />
         <param name="autonomous_deadman" value="$(arg autonomous_deadman)" />
         <param name="timeout" value="$(arg timeout)" />
+        <param name="max_vel_scale" value="$(arg max_vel_scale)"/>
+        <param name="ramp_time_vel" value="$(arg ramp_time_vel)"/>
     </node>
     
     <!--========================-->
