@@ -138,7 +138,10 @@ class SteeringController():
             sys.stderr.write("Runtime Error -> Creating Stepper")
             raise
 
-        self.ch.setDeviceSerialNumber(522972)
+        # Serial number of previous phidget that broke
+        #self.ch.setDeviceSerialNumber(522972)
+        # Current Serial number
+        self.ch.setDeviceSerialNumber(522722)
         self.ch.setChannel(0)
 
         # Set handlers, these are called when certain Phidget events happen
