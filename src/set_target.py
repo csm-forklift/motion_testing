@@ -44,10 +44,10 @@ def main():
 
     elif (target_location == "demo2"):
         print("[%s]: using 'demo2' target" % rospy.get_name())
-        request.roll_pose.pose.position.x = 5.0
-        request.roll_pose.pose.position.y = -12.0
+        request.roll_pose.pose.position.x = 7.0
+        request.roll_pose.pose.position.y = -9.5
         request.roll_pose.pose.position.z = 0.0
-        yaw = math.pi/4.0
+        yaw = math.pi/3.0
         quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
         request.roll_pose.pose.orientation.x = quat[0]
         request.roll_pose.pose.orientation.y = quat[1]
