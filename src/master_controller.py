@@ -62,7 +62,7 @@ class MasterController:
         self.available_debug_tests = {"none": DebugTest(starting_mode=1, allowed_modes=[0,1,2,3,4,5,6,7]), \
         "grasp": DebugTest(starting_mode=5, allowed_modes=[5,6,7,0]), \
         "obstacle_avoidance": DebugTest(starting_mode=2, allowed_modes=[2]), \
-        "maneuver": DebugTest(starting_mode=1, allowed_modes=[1,2,3,4]), \
+        "maneuver": DebugTest(starting_mode=1, allowed_modes=[1,3,4,5,6,7,0]), \
         "clamp": DebugTest(starting_mode=7, allowed_modes=[7,0]), \
         "man_to_grasp": DebugTest(starting_mode=3, allowed_modes=[3,4,5,6,7,0])}
 
@@ -89,6 +89,7 @@ class MasterController:
         if (self.master_operation_mode is not None):
             self.operation_mode = self.master_operation_mode
 
+        print("[%s]: Using debug mode: %s" % (rospy.get_name(), self.debug_test))
         print("[master_controller]: Starting mode set to: %d" % self.operation_mode)
 
         self.grasp_finished = False # inidcates when grasp operation is fully complete
@@ -335,13 +336,18 @@ class MasterController:
                 rospy.loginfo("Optimization result: %d\nMessage: %s", resp.optimization_successful, resp.message)
 
                 if (resp.optimization_successful):
-                    rospy.wait_for_message("/obstacle_avoidance_path", Path)
-                    # Publish path and gear and delay
-                    self.path_pub.publish(self.paths[self.obstacle_path])
-                    self.publishGear(self.gears[self.obstacle_path])
-                    time.sleep(1)
+                    if (self.debug_test == 'maneuver'):
+                        print("[%s]: maneuver test, skipping obstacle path" % rospy.get_name())
+                        self.operation_mode = 3
+                    else:
+                        rospy.wait_for_message("/obstacle_avoidance_path", Path)
+                        # Publish path and gear and delay
+                        self.path_pub.publish(self.paths[self.obstacle_path])
+                        self.publishGear(self.gears[self.obstacle_path])
+                        time.sleep(1)
 
-                    self.operation_mode = 2
+                        print("[%s]: other test: %s" % (rospy.get_name(), self.debug_test))
+                        self.operation_mode = 2
 
             # Avoid obstacles on the way to the maneuver path
             if (self.operation_mode == 2):
