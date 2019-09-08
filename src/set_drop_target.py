@@ -11,15 +11,15 @@ import tf
 
 def main():
     # Create node
-    rospy.init_node("set_target")
+    rospy.init_node("set_drop_target")
 
     # Determine the setpoint to use
     target_location = rospy.get_param("~location", "demo1")
 
     # Run the service and return the response
-    rospy.wait_for_service("/master_controller/set_pick_target", 2)
+    rospy.wait_for_service("/master_controller/set_drop_target", 2)
     try:
-        set_target = rospy.ServiceProxy("/master_controller/set_pick_target", SetTarget)
+        set_target = rospy.ServiceProxy("/master_controller/set_drop_target", SetTarget)
     except rospy.ServiceException, e:
         print("[%s]: waiting for service failed: %s" % (rospy.get_name(), e))
 
@@ -44,10 +44,10 @@ def main():
 
     elif (target_location == "demo2"):
         print("[%s]: using 'demo2' target" % rospy.get_name())
-        request.roll_pose.pose.position.x = 7.0
-        request.roll_pose.pose.position.y = -9.5
+        request.roll_pose.pose.position.x = 10.0
+        request.roll_pose.pose.position.y = 0.0
         request.roll_pose.pose.position.z = 0.0
-        yaw = math.pi/3.0
+        yaw = math.pi/2.0
         quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
         request.roll_pose.pose.orientation.x = quat[0]
         request.roll_pose.pose.orientation.y = quat[1]
@@ -63,6 +63,18 @@ def main():
         request.roll_pose.pose.orientation.y = 0.0
         request.roll_pose.pose.orientation.z = -0.3826834
         request.roll_pose.pose.orientation.w = 0.9238795
+
+    elif (target_location == "maneuver2"):
+        print("[%s]: using 'maneuver2' target" % rospy.get_name())
+        request.roll_pose.pose.position.x = -13.0
+        request.roll_pose.pose.position.y = -2.0
+        request.roll_pose.pose.position.z = 0.0
+        yaw = 0.0
+        quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
+        request.roll_pose.pose.orientation.x = quat[0]
+        request.roll_pose.pose.orientation.y = quat[1]
+        request.roll_pose.pose.orientation.z = quat[2]
+        request.roll_pose.pose.orientation.w = quat[3]
 
     elif (target_location == "grasp1"):
         print("[%s]: using 'grasp1' target" % rospy.get_name())
@@ -80,6 +92,18 @@ def main():
         request.roll_pose.pose.position.y = 0.0
         request.roll_pose.pose.position.z = 0.0
         yaw = -math.pi/4.0
+        quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
+        request.roll_pose.pose.orientation.x = quat[0]
+        request.roll_pose.pose.orientation.y = quat[1]
+        request.roll_pose.pose.orientation.z = quat[2]
+        request.roll_pose.pose.orientation.w = quat[3]
+
+    elif (target_location == "test2"):
+        print("[%s]: using 'test2' target" % rospy.get_name())
+        request.roll_pose.pose.position.x = -10.5
+        request.roll_pose.pose.position.y = -3.0
+        request.roll_pose.pose.position.z = 0.0
+        yaw = 0.0
         quat = tf.transformations.quaternion_from_euler(0, 0, yaw)
         request.roll_pose.pose.orientation.x = quat[0]
         request.roll_pose.pose.orientation.y = quat[1]

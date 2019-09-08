@@ -7,8 +7,9 @@ List of Control Modes
 0: no controllers running
 1: forward path tracking (velocity_controller_forward)
 2: reverse path tracking (velocity_controller_reverse)
-3: approach control + clamp control + cylinder deteciont (approach_control, clamp_control, cylinder_detection)
+3: approach control + clamp control pick + cylinder deteciont (approach_control, clamp_control, cylinder_detection)
 4: cylinder detection only (cylinder_detection)
+5: clamp control drop (clamp_control)
 '''
 
 
@@ -94,6 +95,8 @@ class MasterController:
 
         self.grasp_finished = False # inidcates when grasp operation is fully complete
         self.grasp_status = False # indicates whether the roll has been grasped by the clamp
+        self.drop_finished = False # inidcates when drop operation is fully complete
+        self.drop_status = False # indicates whether the roll has been dropped by the clamp
         self.forklift_current_pose = PoseStamped()
         self.target_current_pose = PoseStamped()
 
@@ -148,6 +151,8 @@ class MasterController:
         self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odomCallback, queue_size=3)
         self.grasp_status_sub = rospy.Subscriber("/clamp_control/grasp_status", Bool, self.graspSuccessCallback, queue_size=3)
         self.grasp_finished_sub = rospy.Subscriber("/clamp_control/grasp_finished", Bool, self.graspFinishedCallback, queue_size=3)
+        self.drop_status_sub = rospy.Subscriber("/clamp_control/drop_status", Bool, self.dropSuccessCallback, queue_size=3)
+        self.drop_finished_sub = rospy.Subscriber("/clamp_control/drop_finished", Bool, self.dropFinishedCallback, queue_size=3)
         self.roll_position_sub = rospy.Subscriber("/cylinder_detection/point", PointStamped, self.rollPositionCallback, queue_size=3)
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystickCallback, queue_size=3)
 
@@ -245,6 +250,12 @@ class MasterController:
     def graspFinishedCallback(self, msg):
         self.grasp_finished = msg.data
 
+    def dropSuccessCallback(self, msg):
+        self.drop_status = msg.data
+
+    def dropFinishedCallback(self, msg):
+        self.drop_finished = msg.data
+
     def rollPositionCallback(self, msg):
         self.target_current_pose.pose.position = copy.deepcopy(msg.point)
 
@@ -302,6 +313,7 @@ class MasterController:
             rospy.set_param("/control_panel_node/goal_y", self.target_current_pose.pose.position.y)
 
             # Wait for the path to update
+            self.obstacle_path_received = False
             while not self.obstacle_path_received:
                 # DEBUG: Check for obstacle path
                 print("Mesaa waitin'")
@@ -577,11 +589,83 @@ class MasterController:
 
     def dropTarget(self, req):
         '''
-        TODO: Description of modes and stateflow
+        Operation Modes
+        1: Travel to target position
+        2: Drop roll
         '''
+        # Initialize operation mode
+        self.operation_mode = 1
+
+        # Get target and set obstacle avoidance path controller
+        self.target_current_pose = req.roll_pose
+        rospy.set_param("/control_panel_node/goal_x", float(self.target_current_pose.pose.position.x))
+        rospy.set_param("/control_panel_node/goal_y", float(self.target_current_pose.pose.position.y))
+
+        # Wait for the path to update
+        self.obstacle_path_received = False
+        while not self.obstacle_path_received:
+            # DEBUG: Check for obstacle path
+            print("Mesaa waitin'")
+
+            dur = rospy.Duration(1.0)
+            rospy.sleep(dur)
+
+        # Avoid obstacles on the way to the maneuver path
+        if (self.operation_mode == 1):
+            print(30*"=")
+            print("Obstacle avoidance path")
+            print(30*"=")
+            # Set operation mode parameter in case of restart
+            rospy.set_param("~master_operation_mode", self.operation_mode)
+
+            if (self.paths[self.obstacle_path] is not None):
+
+                self.control_mode.data = 2 # reverse controller
+                self.control_mode_pub.publish(self.control_mode)
+
+                while not rospy.get_param("/goal_bool", False):
+                    self.path_pub.publish(self.paths[self.obstacle_path])
+                    self.publishGear(self.gears[self.obstacle_path])
+                    self.rate.sleep()
+
+                # Delay
+                time.sleep(1)
+
+                self.operation_mode = 2
+            else:
+                message = "Error: obstacle path was not generated"
+                self.drop_finished = False
+                break
+
+        if (self.operation_mode == 2):
+            print(30*"=")
+            print("Dropping roll")
+            print(30*"=")
+            # Set operation mode parameter in case of restart
+            rospy.set_param("~master_operation_mode", self.operation_mode)
+
+            self.control_mode.data = 5 # clamp_control drop
+            self.control_mode_pub.publish(self.control_mode)
+
+            # Make sure that the system stops while switching between the regular velocity controller and the clamp approach controller
+            # Set velocity to 0 before switching modes
+            velocity_setpoint_msg = Float64()
+            velocity_setpoint_msg.data = 0.0
+            self.velocity_setpoint_pub.publish(velocity_setpoint_msg)
+
+            while (self.drop_finished == False):
+                self.rate.sleep()
+
+            self.operation_mode = 0
+            message = "Drop completed successfully"
+
+            # Turn off controllers
+            self.control_mode.data = 0 # no controllers
+            self.control_mode_pub.publish(self.control_mode)
+
         resp = SetTargetResponse()
-        resp.success = False
-        resp.message = "This feature has not been implemented yet."
+        resp.success = self.drop_finished
+        resp.message = message
         return resp
 
     def publishGear(self, gear):
