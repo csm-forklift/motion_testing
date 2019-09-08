@@ -610,58 +610,59 @@ class MasterController:
             dur = rospy.Duration(1.0)
             rospy.sleep(dur)
 
-        # Avoid obstacles on the way to the maneuver path
-        if (self.operation_mode == 1):
-            print(30*"=")
-            print("Obstacle avoidance path")
-            print(30*"=")
-            # Set operation mode parameter in case of restart
-            rospy.set_param("~master_operation_mode", self.operation_mode)
+        while (self.drop_finished is not True):
+            # Avoid obstacles on the way to the maneuver path
+            if (self.operation_mode == 1):
+                print(30*"=")
+                print("Obstacle avoidance path")
+                print(30*"=")
+                # Set operation mode parameter in case of restart
+                rospy.set_param("~master_operation_mode", self.operation_mode)
 
-            if (self.paths[self.obstacle_path] is not None):
+                if (self.paths[self.obstacle_path] is not None):
 
-                self.control_mode.data = 2 # reverse controller
+                    self.control_mode.data = 2 # reverse controller
+                    self.control_mode_pub.publish(self.control_mode)
+
+                    while not rospy.get_param("/goal_bool", False):
+                        self.path_pub.publish(self.paths[self.obstacle_path])
+                        self.publishGear(self.gears[self.obstacle_path])
+                        self.rate.sleep()
+
+                    # Delay
+                    time.sleep(1)
+
+                    self.operation_mode = 2
+                else:
+                    message = "Error: obstacle path was not generated"
+                    self.drop_finished = False
+                    break
+
+            if (self.operation_mode == 2):
+                print(30*"=")
+                print("Dropping roll")
+                print(30*"=")
+                # Set operation mode parameter in case of restart
+                rospy.set_param("~master_operation_mode", self.operation_mode)
+
+                self.control_mode.data = 5 # clamp_control drop
                 self.control_mode_pub.publish(self.control_mode)
 
-                while not rospy.get_param("/goal_bool", False):
-                    self.path_pub.publish(self.paths[self.obstacle_path])
-                    self.publishGear(self.gears[self.obstacle_path])
+                # Make sure that the system stops while switching between the regular velocity controller and the clamp approach controller
+                # Set velocity to 0 before switching modes
+                velocity_setpoint_msg = Float64()
+                velocity_setpoint_msg.data = 0.0
+                self.velocity_setpoint_pub.publish(velocity_setpoint_msg)
+
+                while (self.drop_finished == False):
                     self.rate.sleep()
 
-                # Delay
-                time.sleep(1)
+                self.operation_mode = 0
+                message = "Drop completed successfully"
 
-                self.operation_mode = 2
-            else:
-                message = "Error: obstacle path was not generated"
-                self.drop_finished = False
-                break
-
-        if (self.operation_mode == 2):
-            print(30*"=")
-            print("Dropping roll")
-            print(30*"=")
-            # Set operation mode parameter in case of restart
-            rospy.set_param("~master_operation_mode", self.operation_mode)
-
-            self.control_mode.data = 5 # clamp_control drop
-            self.control_mode_pub.publish(self.control_mode)
-
-            # Make sure that the system stops while switching between the regular velocity controller and the clamp approach controller
-            # Set velocity to 0 before switching modes
-            velocity_setpoint_msg = Float64()
-            velocity_setpoint_msg.data = 0.0
-            self.velocity_setpoint_pub.publish(velocity_setpoint_msg)
-
-            while (self.drop_finished == False):
-                self.rate.sleep()
-
-            self.operation_mode = 0
-            message = "Drop completed successfully"
-
-            # Turn off controllers
-            self.control_mode.data = 0 # no controllers
-            self.control_mode_pub.publish(self.control_mode)
+                # Turn off controllers
+                self.control_mode.data = 0 # no controllers
+                self.control_mode_pub.publish(self.control_mode)
 
         resp = SetTargetResponse()
         resp.success = self.drop_finished

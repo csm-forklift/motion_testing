@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-This node calls the 'set_pick_target' service from 'master_controller'
+This node calls the 'set_drop_target' service from 'master_controller'
 '''
 
 
