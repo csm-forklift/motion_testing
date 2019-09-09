@@ -8,6 +8,7 @@
     <arg name="timeout" default="1.0"/>
     <arg name="joy_dev" default="/dev/input/js0"/>
     <arg name="joy_clamp_scale" default="1.0"/>
+    <arg name="max_velocity" default="0.25"/>
     <!-- options: velocity, pmw -->
     <arg name="pedal_mode" default="velocity"/>
     <!-- options: relative, absolute -->
@@ -26,7 +27,7 @@
         <param name="manual_deadman" value="$(arg manual_deadman)"/>
         <param name="autonomous_deadman" value="$(arg autonomous_deadman)"/>
         <param name="timeout" value="$(arg timeout)"/>
-        <param name="vel_max" value="0.5"/>
+        <param name="vel_max" value="$(arg max_velocity)"/>
         <param name="pwm_max" value="255"/>
         <param name="pedal_mode" value="$(arg pedal_mode)"/>
         <param name="steering_mode" value="$(arg steering_mode)"/>
