@@ -595,6 +595,7 @@ class MasterController:
         '''
         # Initialize operation mode
         self.operation_mode = 1
+        self.drop_finished = False
 
         # Get target and set obstacle avoidance path controller
         self.target_current_pose = req.roll_pose
