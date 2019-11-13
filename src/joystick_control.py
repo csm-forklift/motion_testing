@@ -86,8 +86,8 @@ class JoystickController:
         self.pwm_pub = rospy.Publisher("/velocity_node/pedal_pwm", UInt8, queue_size=3)
         self.angle_setpoint_pub = rospy.Publisher("/steering_node/angle_setpoint", Float64, queue_size=3)
         self.pedal_switch_pub = rospy.Publisher("/velocity_node/pedal_switch", Bool, queue_size=3)
-        self.clamp_movement_pub = rospy.Publisher("/clamp_switch_node/clamp_movement", Float32, queue_size=3)
-        self.clamp_grasp_pub = rospy.Publisher("/clamp_switch_node/clamp_grasp", Float32, queue_size=3)
+        self.clamp_movement_pub = rospy.Publisher("/clamp_control/clamp_movement", Float32, queue_size=3)
+        self.clamp_grasp_pub = rospy.Publisher("/clamp_control/clamp_grasp", Float32, queue_size=3)
         self.gear_pub = rospy.Publisher("/velocity_node/gear", Int8, queue_size=3)
 
         self.joystick_sub = rospy.Subscriber("/joy", Joy, self.joystick_callback, queue_size=1)
